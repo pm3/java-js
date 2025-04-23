@@ -83,11 +83,9 @@ public class JsSdk {
                 "isExtensible", new JsFunction("isExtensible", List.of("val"), JsSdk::object_isExtensible),
                 "assign", new JsFunction("assign", List.of("target", "sources"), JsSdk::object_assign),
                 "entries", new JsFunction("entries", List.of("obj"), JsSdk::object_entries),
-                "freeze", new JsFunction("freeze", List.of("obj"), JsSdk::object_freeze),
                 "getOwnPropertyNames", new JsFunction("getOwnPropertyNames", List.of("obj"), JsSdk::object_getOwnPropertyNames),
                 "groupBy", new JsFunction("groupBy", List.of("items", "callbackFn"), JsSdk::object_groupBy),
                 "hasOwn", new JsFunction("hasOwn", List.of("obj", "prop"), JsSdk::object_hasOwn),
-                "isFrozen", new JsFunction("isFrozen", List.of("obj"), JsSdk::object_isFrozen),
                 "keys", new JsFunction("keys", List.of("obj"), JsSdk::object_keys),
                 "values", new JsFunction("values", List.of("obj"), JsSdk::object_values)
         ));
@@ -296,7 +294,7 @@ public class JsSdk {
                 return result.substring(0, targetLength - parent.length()) + parent;
             }
         }
-        return result.toString() + parent;
+        return result + parent;
     }
 
     //String.prototype.repeat()
@@ -1043,11 +1041,6 @@ public class JsSdk {
         return entries;
     }
 
-    //Object.freeze()
-    public static Object object_freeze(Scope scope, List<Object> args) {
-        return null;
-    }
-
     //Object.getOwnPropertyNames()
     public static List<String> object_getOwnPropertyNames(Scope scope, List<Object> args) {
         if (args.isEmpty() || !(args.getFirst() instanceof Map)) {
@@ -1088,13 +1081,6 @@ public class JsSdk {
             return false;
         }
         return map.containsKey(JsTypes.toString(args.get(1)));
-    }
-
-    //Object.isFrozen()
-    public static boolean object_isFrozen(Scope scope, List<Object> args) {
-        // In a full implementation, this would check if the object is frozen
-        // For our simple implementation, we always return false
-        return false;
     }
 
     //Object.keys()

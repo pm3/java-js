@@ -68,10 +68,11 @@ public record GetSet(Object value, Consumer<Object> setter) {
     }
 
     public static void mapPut(Map map, Object property, Object value) {
-        if(!(map instanceof HashMap)) {
-            throw new RuntimeException("Cannot add property to frozen object");
+        try{
+            map.put(JsTypes.toString(property), value);
+        }catch (Exception e){
+            throw new RuntimeException("Cannot set property - object is readonly");
         }
-        map.put(JsTypes.toString(property), value);
     }
 
     public static Object listGet(List list, Object property, Scope scope) {
