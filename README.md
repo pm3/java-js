@@ -119,9 +119,7 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 ## 📖 Example Usage
 
 ```java
-import ecma.Scope;
-import eu.aston.javajs.JsSdk;
-
+import eu.aston.javajs.*;
 String script = """           
                 var a = 5;
                 let b = 10;
@@ -133,7 +131,7 @@ Scope rootScope = new Scope();
 JsSdk.defineFunctions(rootScope);
 JsLexer lexer = new JsLexer(script);
 JsParser parser = new JsParser(lexer.tokenize());
-ASTNode rootNode = parser.parse();
+var rootNode = parser.parse();
 rootNode.exec(rootScope);
 
 ```
