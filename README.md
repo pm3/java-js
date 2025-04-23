@@ -1,7 +1,7 @@
 
-# micro-script-jvm
+# java-js
 
-**micro-script-jvm** is a minimalist implementation of a JavaScript subset for the **JVM (Java Virtual Machine)** environment. The engine is syntax-compatible with a selected subset of JavaScript that can be executed in a JavaScript engine, but not vice versa.
+**java-js** is a minimalist implementation of a JavaScript subset for the **JVM (Java Virtual Machine)** environment. The engine is syntax-compatible with a selected subset of JavaScript that can be executed in a JavaScript engine, but not vice versa.
 
 ---
 ## Collaboration with Claude 3.7 (Anthropic)
@@ -120,7 +120,8 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 ## 📖 Example Usage
 
 ```java
-import eu.aston.javajs.*;
+import eu.aston.javajs.Scope;
+import eu.aston.javajs.JsSdk;
 String script = """           
                 var a = 5;
                 let b = 10;
@@ -132,9 +133,7 @@ Scope rootScope = new Scope();
 JsSdk.defineFunctions(rootScope);
 JsLexer lexer = new JsLexer(script);
 JsParser parser = new JsParser(lexer.tokenize());
-var rootNode = parser.parse();
-rootNode.exec(rootScope);
-
+parser.parse().exec(rootScope);
 ```
 ## 📚 Documentation
 
