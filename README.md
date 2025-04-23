@@ -18,6 +18,7 @@ The division of work between Claude 3.7 and Peter was as follows:
 | Types & Ops   | 70%        | 30%   |
 | SDK Functions | 80%        | 20%   |
 | Tests         | 100%       | 0%    |
+| Documentation | 90%        | 10%   |
 
 Claude 3.7 was instrumental in rapidly prototyping and implementing core logic, while Peter focused on architectural decisions, integration, and refining the generated code where needed.
 
