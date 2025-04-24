@@ -68,9 +68,6 @@ public class JsOps {
         if(isNumber(left) || isNumber(right)) {
             return equalNumbers(JsTypes.toNumber(left), JsTypes.toNumber(right));
         }
-        if(left instanceof Boolean || right instanceof Boolean) {
-            return JsTypes.toBoolean(left)== JsTypes.toBoolean(right);
-        }
         if(left instanceof Map || right instanceof Map || left instanceof List || right instanceof List){
             return false;
         }
