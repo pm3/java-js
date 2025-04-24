@@ -68,6 +68,17 @@ public class JsParser {
         advance();
     }
 
+    private void expectEndStatement(){
+        if(!(matchAdvance(TokenType.PUNCTUATION, ";")
+            || match(TokenType.PUNCTUATION, "}")
+            || tokenPosition>=tokens.size()
+            || currentToken.getLine()<tokens.get(tokenPosition).getLine())) {
+            throw new SyntaxError("Expected end statement but got " + currentToken.getType() + " with value '" +
+                                          currentToken.getValue() + "'" + " at line " + currentToken.getLine() +
+                                          ", column " + currentToken.getColumn());
+        }
+    }
+
     // Program = Statement*
     private ASTNode parseProgram() {
         ProgramNode program = new ProgramNode();
@@ -165,7 +176,7 @@ public class JsParser {
             node.addDeclaration(parseVariableDeclaration());
         }
 
-        matchAdvance(TokenType.PUNCTUATION, ";");
+        expectEndStatement();
         return node;
     }
 
@@ -192,8 +203,7 @@ public class JsParser {
     private ASTNode parseExpressionStatement() {
         ASTNode expression = parseExpression();
 
-        // Optional semicolon
-        matchAdvance(TokenType.PUNCTUATION, ";");
+        expectEndStatement();
         return expression;
     }
 
@@ -240,8 +250,7 @@ public class JsParser {
         ASTNode condition = parseExpression();
         expect(TokenType.PUNCTUATION, ")");
 
-        // Optional semicolon
-        matchAdvance(TokenType.PUNCTUATION, ";");
+        expectEndStatement();
 
         return new DoWhileStatementNode(condition, body);
     }
@@ -332,31 +341,16 @@ public class JsParser {
     private ASTNode parseContinueStatement() {
         expect(TokenType.KEYWORD, "continue");
 
-        String label = null;
-        if (currentToken.getType() == TokenType.IDENTIFIER) {
-            label = currentToken.getValue();
-            advance();
-        }
-
-        matchAdvance(TokenType.PUNCTUATION, ";");
-        return new ContinueStatementNode(label);
+        expectEndStatement();
+        return new ContinueStatementNode();
     }
 
     // BreakStatement = "break" Identifier? ";"
     private ASTNode parseBreakStatement() {
         expect(TokenType.KEYWORD, "break");
 
-        String label = null;
-        if (currentToken.getType() == TokenType.IDENTIFIER) {
-            label = currentToken.getValue();
-            advance();
-        }
-
-        // Optional semicolon
-        matchAdvance(TokenType.PUNCTUATION, ";");
-
-
-        return new BreakStatementNode(label);
+        expectEndStatement();
+        return new BreakStatementNode();
     }
 
     // ReturnStatement = "return" Expression? ";"
@@ -369,10 +363,7 @@ public class JsParser {
             expression = parseExpression();
         }
 
-        // Optional semicolon
-        matchAdvance(TokenType.PUNCTUATION, ";");
-
-
+        expectEndStatement();
         return new ReturnStatementNode(expression);
     }
 
@@ -402,7 +393,7 @@ public class JsParser {
 
         if(matchAdvance(TokenType.OPERATOR, "??")) {
             ASTNode right = parseAssignmentExpression();
-            return new NullCoalescingNode(condition, right);
+            return new BinaryExpressionNode(condition, "??", right);
         }
 
         if (matchAdvance(TokenType.PUNCTUATION, "?")) {
@@ -679,7 +670,7 @@ public class JsParser {
                     return new ThisNode();
                 } else if (currentToken.getValue().equals("function")) {
                     // Function expression (anonymous function)
-                    return parseFunctionExpression();
+                    return parseFunctionExpression(false);
                 }
                 break;
 
@@ -822,9 +813,7 @@ public class JsParser {
         expect(TokenType.KEYWORD, "throw");
         ASTNode expression = parseExpression();
 
-        // Optional semicolon
-        matchAdvance(TokenType.PUNCTUATION, ";");
-
+        expectEndStatement();
         return new ThrowStatementNode(expression);
     }
 
@@ -873,7 +862,7 @@ public class JsParser {
 
     // FunctionDeclaration = "function" Identifier "(" FormalParameterList? ")" Block
     private ASTNode parseFunctionDeclaration() {
-        return parseFunctionExpression();
+        return parseFunctionExpression(true);
     }
 
     // ArrayLiteral = "[" ElementList? "]"
@@ -953,13 +942,15 @@ public class JsParser {
     }
 
     // FunctionExpression = "function" Identifier? "(" FormalParameterList? ")" Block
-    private ASTNode parseFunctionExpression() {
+    private ASTNode parseFunctionExpression(boolean requiredName) {
         expect(TokenType.KEYWORD, "function");
 
         String name = null;
         if (currentToken.getType() == TokenType.IDENTIFIER) {
             name = currentToken.getValue();
             advance();
+        } else if (requiredName){
+            throw new SyntaxError("Expected function name in function expression at line " + currentToken.getLine() + ", column " + currentToken.getColumn());
         }
 
         expect(TokenType.PUNCTUATION, "(");

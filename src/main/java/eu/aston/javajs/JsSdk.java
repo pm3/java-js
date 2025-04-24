@@ -16,6 +16,13 @@ import java.util.HashMap;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class JsSdk {
 
+    public static Scope createRootScope(){
+        Scope scope = new Scope();
+        defineFunctions(scope);
+        return scope;
+    }
+
+
     public static void defineFunctions(Scope scope){
         // String prototype methods
         scope.nativeFunction("String.charAt(index)", parentTypeFunction(String.class, JsSdk::string_charAt));

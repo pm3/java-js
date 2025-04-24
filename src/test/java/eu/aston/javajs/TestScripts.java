@@ -20,15 +20,39 @@ public class TestScripts {
         Path dir = Path.of("tests");
         for(Path path : Files.list(dir).toList()){
             if(Files.isDirectory(path)) continue;
-            String script = Files.readString(path);
-            Scope rootScope = new Scope();
-            JsSdk.defineFunctions(rootScope);
-            rootScope.nativeFunction("assert(eq,msg)", (scope, args)->assertNative(tests,args));
-            rootScope.nativeFunction("print()", (scope, args)-> {System.out.println(args); return null; });
-            runScript(rootScope, script+script2);
+            testFile(path, tests);
         }
         return tests.stream();
 
+    }
+
+    private void testFile(Path path, List<DynamicTest> tests) throws IOException {
+        System.out.println(path);
+        String script = Files.readString(path);
+        if(script.contains("/*parse-error*/")){
+            testErrorParser(script, tests);
+        }
+        Scope rootScope = JsSdk.createRootScope();
+        rootScope.nativeFunction("assert(eq,msg)", (scope, args)->assertNative(tests,args));
+        rootScope.nativeFunction("print()", (scope, args)-> {System.out.println(args); return null; });
+        runScript(rootScope, script+script2);
+    }
+
+    private void testErrorParser(String script, List<DynamicTest> tests) {
+        String[] scriptItems = script.split("/\\*parse-error\\*/");
+        for(String s : scriptItems){
+            if(s.trim().isEmpty()) continue;
+            String name = s.lines().toList().getFirst();
+            try{
+                JsLexer lexer = new JsLexer(s);
+                JsParser parser = new JsParser(lexer.tokenize());
+                parser.parse();
+                System.out.println("error script:\n"+s);
+                Assertions.fail("invalid script parsed without errors "+name);
+            }catch (Exception e){
+                Assertions.assertTrue(true,"invalid script parsed with errors "+name);
+            }
+        }
     }
 
     private void runScript(Scope rootScope, String script) {

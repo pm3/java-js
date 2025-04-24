@@ -47,8 +47,7 @@ public class ManualTestAll {
 
 
                     """;
-                    Scope rootScope = new Scope();
-                    JsSdk.defineFunctions(rootScope);
+                    Scope rootScope = JsSdk.createRootScope();
                     rootScope.nativeFunction("print()", (scope, args)-> {System.out.println(args); return null; });
                     rootScope.nativeFunction("Error(val)", (scope, args) -> JsTypes.toString(args.getFirst()));
                     JsLexer lexer = new JsLexer(script+script2);
@@ -119,8 +118,7 @@ public class ManualTestAll {
         ASTNode programNode = parser.parse();
 
         for(int i=0; i<10; i++){
-            Scope rootScope = new Scope();
-            JsSdk.defineFunctions(rootScope);
+            Scope rootScope = JsSdk.createRootScope();
             programNode.exec(rootScope);
         }
     }

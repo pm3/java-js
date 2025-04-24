@@ -130,8 +130,7 @@ String script = """
                 
                 var result = sum(a, b);
                 """;
-Scope rootScope = new Scope();
-JsSdk.defineFunctions(rootScope);
+Scope rootScope = JsSdk.createRootScope();
 JsLexer lexer = new JsLexer(script);
 JsParser parser = new JsParser(lexer.tokenize());
 ASTNode programNode = parser.parse();
@@ -148,8 +147,7 @@ JsParser parser = new JsParser(lexer.tokenize());
 ASTNode programNode = parser.parse();
 
 for(int i=0; i<10; i++){
-     Scope rootScope = new Scope();
-     JsSdk.defineFunctions(rootScope);
+     Scope rootScope = JsSdk.createRootScope();
      programNode.exec(rootScope);
 }
 ```

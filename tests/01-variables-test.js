@@ -117,12 +117,30 @@ function testVariableScope() {
   }, "constInBlock is not defined");
 }
 
+// Test array with empty items
+function testArrayWithEmptyItems() {
+  // Create array with empty items using array literal
+  let arr1 = [1,,3];
+  assert(arr1.length === 3, "Array with empty item has correct length");
+  assert(arr1[1] === undefined, "Empty array item is undefined");
+  
+
+  // Create sparse array
+  let arr3 = [];
+  arr3[0] = 1;
+  arr3[2] = 3;
+  assert(arr3.length === 3, "Sparse array has correct length");
+  assert(arr3[1] === undefined, "Missing array item is undefined");
+}
+
+
 // Run all tests
 const functions = [
     testVariableDeclarations,
     testDataTypes,
     testTypeConversion,
-    testVariableScope];
+    testVariableScope,
+    testArrayWithEmptyItems];
 for(let testFunction of functions) {
     try {
         testFunction();
@@ -130,4 +148,6 @@ for(let testFunction of functions) {
         print("!!!!!Test failed:", testFunction, error);
     }
 }
+
+
 

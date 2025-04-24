@@ -305,11 +305,6 @@ public class AstNodes {
     }
 
     public static class ContinueStatementNode extends ASTNode {
-        protected String label;
-
-        public ContinueStatementNode(String label) {
-            this.label = label;
-        }
         @Override
         public Object exec(Scope scope) {
             throw new BreakBlockException(true);
@@ -317,11 +312,6 @@ public class AstNodes {
     }
 
     public static class BreakStatementNode extends ASTNode {
-        protected String label;
-
-        public BreakStatementNode(String label) {
-            this.label = label;
-        }
         @Override
         public Object exec(Scope scope) {
             throw new BreakBlockException(false);
@@ -487,12 +477,6 @@ public class AstNodes {
         protected ASTNode right;
 
         public BinaryExpressionNode(ASTNode left, String operator, ASTNode right) {
-            if (!(left instanceof ExecuteWithReturn)) {
-                throw new RuntimeException("left must be an expression");
-            }
-            if (!(right instanceof ExecuteWithReturn)) {
-                throw new RuntimeException("right must be an expression");
-            }
             this.left = left;
             this.operator = operator;
             this.right = right;
@@ -508,6 +492,14 @@ public class AstNodes {
                 this.operatorFunction = (scope) -> {
                     Object leftValue = wrapOptionalNotFound(left,scope);
                     if (!JsTypes.toBoolean(leftValue)) {
+                        return leftValue;
+                    }
+                    return wrapOptionalNotFound(right,scope);
+                };
+            } else if(operator.equals("??")) {
+                this.operatorFunction = (scope) -> {
+                    Object leftValue = wrapOptionalNotFound(left,scope);
+                    if (leftValue!=null && leftValue!=Undefined.INSTANCE) {
                         return leftValue;
                     }
                     return wrapOptionalNotFound(right,scope);
@@ -612,24 +604,6 @@ public class AstNodes {
             } else {
                 return wrapOptionalNotFound(falseExpression, scope);
             }
-        }
-    }
-
-    public static class NullCoalescingNode extends ASTNode implements ExecuteWithReturn{
-        protected ASTNode left;
-        protected ASTNode right;
-
-        public NullCoalescingNode(ASTNode left, ASTNode right) {
-            this.left = left;
-            this.right = right;
-        }
-        @Override
-        public Object exec(Scope scope) {
-            Object leftValue = wrapOptionalNotFound(left, scope);
-            if (leftValue==null || leftValue==Undefined.INSTANCE) {
-                return wrapOptionalNotFound(right, scope);
-            }
-            return leftValue;
         }
     }
 
