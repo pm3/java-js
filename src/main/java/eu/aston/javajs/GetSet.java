@@ -38,10 +38,7 @@ public record GetSet(Object value, Consumer<Object> setter) {
             return str.length();
         }
         if(property instanceof Number index){
-            if(index.intValue()<0 || index.intValue()>=str.length()){
-                throw new NotFoundException("String index out of range");
-            }
-            return str.charAt(index.intValue());
+            return index.intValue()>=0 && index.intValue()<str.length() ? str.charAt(index.intValue()) : Undefined.INSTANCE;
         }
         if(property instanceof String){
             JsFunction function = scope.getFunction("String."+property);
@@ -87,10 +84,7 @@ public record GetSet(Object value, Consumer<Object> setter) {
         }
         Integer index = parseIndex(property);
         if(index!=null){
-            if(index<0 || index>=list.size()){
-                throw new NotFoundException("Array index out of bounds");
-            }
-            return list.get(index);
+            return index>=0 && index<list.size() ? list.get(index) : Undefined.INSTANCE;
         }
         return Undefined.INSTANCE;
     }
@@ -98,8 +92,14 @@ public record GetSet(Object value, Consumer<Object> setter) {
     public static void listSet(List list, Object property, Object value) {
         Integer index = parseIndex(property);
         if(index!=null){
-            if(index<0 || index>=list.size()){
+            if(index<0){
                 throw new NotFoundException("Array index out of bounds");
+            }
+            if(index>AstNodes.INFINITE_LOOP_LIMIT){
+                throw new NotFoundException("Array index out of bounds, max limit is "+AstNodes.INFINITE_LOOP_LIMIT);
+            }
+            while(index>=list.size()){
+                list.add(Undefined.INSTANCE);
             }
             list.set(index, value);
             return;

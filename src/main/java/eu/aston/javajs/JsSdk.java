@@ -392,7 +392,7 @@ public class JsSdk {
     public static List<String> string_split(Scope scope, List<Object> args, String parent){
         if(args.isEmpty()) return List.of(parent);
         String separator = JsTypes.toString(args.getFirst());
-        int limit = args.size() > 1 ? JsTypes.toNumber(args.get(1)).intValue() : Integer.MAX_VALUE;
+        int limit = args.size() > 1 && args.get(1) instanceof Number num ? num.intValue() : Integer.MAX_VALUE;
         
         if(limit <= 0) return List.of();
         if(separator.isEmpty()) {

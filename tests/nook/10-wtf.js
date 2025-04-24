@@ -1,3 +1,9 @@
+    assert([] + [] === "", "Array plus array is empty string");
+    assert([] + {} === "[object Object]", "Array plus object gives [object Object]");
+    assert({} + {} === "[object Object][object Object]", "Object plus object concatenates their string representations");
+    assert(+"" === 0, "Empty string converts to 0");
+
+
     assert([2,3] == "2,3", "Array auto-converts to string for comparison");
 
     // Array weirdness
@@ -6,13 +12,9 @@
     assert([2,3] == "2,3", "Array auto-converts to string for comparison");
 
     // Type coercion madness
-    assert([] + [] === "", "Array plus array is empty string");
-    assert([] + {} === "[object Object]", "Array plus object gives [object Object]");
     assert({} + [] === 0, "Object plus array is 0");
-    assert({} + {} === "[object Object][object Object]", "Object plus object concatenates their string representations");
 
     // Numeric conversion weirdness
-    assert(+"" === 0, "Empty string converts to 0");
     assert(+[] === 0, "Empty array converts to 0");
     assert(+{} === NaN, "Object converts to NaN");
     assert(+"123" === 123, "String number converts correctly");

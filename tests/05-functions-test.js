@@ -126,6 +126,6 @@ for(let testFunction of functions) {
         testFunction();
 
     } catch (error) {
-        print("!!!!!Test failed:", testFunction, error);
+        assert(false, "method "+testFunction+" error "+error);
     }
 }

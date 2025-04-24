@@ -581,6 +581,7 @@ public class AstNodes {
             }catch (ExecuteScriptException e){
                 throw e;
             }catch (Exception e){
+                e.printStackTrace();
                 throw new ExecuteScriptException("Error in assignment "+e.getMessage(), null);
             }
         }

@@ -284,6 +284,70 @@ function testOtherStatements() {
   }
 }
 
+// Test multi-line statements
+function testMultiLineStatements() {
+  // Multi-line object literal
+  const person = {
+    name: "John",
+    age: 30,
+    address: {
+      street: "123 Main St",
+      city: "Anytown",
+      country: "USA"
+    }
+  };
+  assert(person.name === "John" && person.address.city === "Anytown",
+    "Multi-line object literal works correctly");
+
+  // Multi-line array
+  const numbers = [
+    1,
+    2,
+    3,
+    4,
+    5
+  ];
+  assert(numbers.length === 5 && numbers[4] === 5,
+    "Multi-line array works correctly");
+
+  // Multi-line function with multiple statements
+  function calculateArea(width, height) {
+    const area = width * height;
+    const perimeter = 2 * (width + height);
+    
+    return {
+      area: area,
+      perimeter: perimeter
+    };
+  }
+  const result = calculateArea(5, 3);
+  assert(result.area === 15 && result.perimeter === 16,
+    "Multi-line function works correctly");
+
+  // Multi-line template string
+  const template = `
+    This is a multi-line
+    template string with
+    ${3 + 4} as calculated value
+  `;
+  assert(template.includes("7") && template.split("\n").length > 3,
+    "Multi-line template string works correctly");
+
+  // Multi-line if-else statement
+  let value = 10;
+  if (value > 5) {
+    value += 2;
+    value *= 2;
+    value -= 5;
+  } else {
+    value -= 2;
+    value /= 2;
+    value += 5;
+  }
+  assert(value === 19,
+    "Multi-line if-else statement works correctly");
+}
+
 // Run all tests
 const functions = [
     testConditionalStatements,
@@ -295,6 +359,6 @@ for(let testFunction of functions) {
         testFunction();
 
     } catch (error) {
-        print("!!!!!Test failed:", testFunction, error);
+        assert(false, "method "+testFunction+" error "+error);
     }
 }

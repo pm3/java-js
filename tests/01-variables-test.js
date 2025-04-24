@@ -131,6 +131,59 @@ function testArrayWithEmptyItems() {
   arr3[2] = 3;
   assert(arr3.length === 3, "Sparse array has correct length");
   assert(arr3[1] === undefined, "Missing array item is undefined");
+
+  // Array with one item and a comma
+  let arr4 = [1,];
+  assert(arr4.length === 1, "Array with one item and a comma has correct length");
+
+}
+
+function testMultilineStrings() {
+
+  // Multi-line string with concatenation
+  const str2 = "First line " +
+    "second line " +
+    "third line";
+  assert(str2 === "First line second line third line",
+    "Multi-line string with concatenation works");
+
+  // Multi-line string with template literal
+  const str3 = `Line one
+    Line two
+    Line three`;
+  assert(str3.split("\n").length === 3,
+    "Multi-line template literal preserves line breaks");
+
+  // Multi-line string with escape sequences
+  const str4 = "Line 1\nLine 2\nLine 3";
+  assert(str4.split("\n").length === 3,
+    "Multi-line string with escape sequences works");
+
+  // Multi-line string with mixed quotes
+  const str5 = "Line one\n" +
+    'Line "two"\n' +
+    `Line 'three'`;
+  assert(str5.includes('"two"') && str5.includes("'three'"),
+    "Multi-line string with mixed quotes works");
+}
+
+
+function testEscapeSequences() {
+  // Test hex escape sequence \xXX
+  const hexStr = "Hello \x48\x69";  // \x48 = 'H', \x69 = 'i'
+  assert(hexStr === "Hello Hi", "Hex escape sequence works correctly");
+
+  // Test unicode escape sequence \uXXXX 
+  const unicodeStr = "Hello \u0048\u0069"; // \u0048 = 'H', \u0069 = 'i'
+  assert(unicodeStr === "Hello Hi", "Unicode escape sequence works correctly");
+
+  // Test mixed escape sequences
+  const mixedStr = "\x48\u0065\x6C\u006C\x6F"; // "Hello"
+  assert(mixedStr === "Hello", "Mixed hex and unicode escape sequences work correctly");
+
+  // Test escape sequences with special characters
+  const specialStr = "\x22\u0027"; // Quote marks
+  assert(specialStr === "\"'", "Escape sequences with special characters work correctly");
 }
 
 
@@ -140,12 +193,14 @@ const functions = [
     testDataTypes,
     testTypeConversion,
     testVariableScope,
-    testArrayWithEmptyItems];
+    testArrayWithEmptyItems,
+    testMultilineStrings,
+    testEscapeSequences];
 for(let testFunction of functions) {
     try {
         testFunction();
     } catch (error) {
-        print("!!!!!Test failed:", testFunction, error);
+        assert(false, "method "+testFunction+" error "+error);
     }
 }
 

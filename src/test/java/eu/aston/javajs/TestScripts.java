@@ -31,6 +31,7 @@ public class TestScripts {
         String script = Files.readString(path);
         if(script.contains("/*parse-error*/")){
             testErrorParser(script, tests);
+            return;
         }
         Scope rootScope = JsSdk.createRootScope();
         rootScope.nativeFunction("assert(eq,msg)", (scope, args)->assertNative(tests,args));
@@ -42,16 +43,15 @@ public class TestScripts {
         String[] scriptItems = script.split("/\\*parse-error\\*/");
         for(String s : scriptItems){
             if(s.trim().isEmpty()) continue;
-            String name = s.lines().toList().getFirst();
-            try{
-                JsLexer lexer = new JsLexer(s);
-                JsParser parser = new JsParser(lexer.tokenize());
-                parser.parse();
-                System.out.println("error script:\n"+s);
-                Assertions.fail("invalid script parsed without errors "+name);
-            }catch (Exception e){
-                Assertions.assertTrue(true,"invalid script parsed with errors "+name);
-            }
+            String name = s.split("/n")[0];
+            tests.add(DynamicTest.dynamicTest(name, ()->{
+                Assertions.assertThrows(Exception.class, ()->{
+                    JsLexer lexer = new JsLexer(s);
+                    JsParser parser = new JsParser(lexer.tokenize());
+                    parser.parse();
+                    System.out.println("error script:\n"+s);
+                });
+            }));
         }
     }
 

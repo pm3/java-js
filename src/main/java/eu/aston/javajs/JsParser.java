@@ -875,7 +875,7 @@ public class JsParser {
         if (!match(TokenType.PUNCTUATION, "]")) {
             // Handle first element (which might be elided)
             if (match(TokenType.PUNCTUATION, ",")) {
-                elements.add(null); // Elided element
+                elements.add(new ConstantNode(Undefined.INSTANCE)); // Elided element
             } else {
                 elements.add(parseAssignmentExpression());
             }
@@ -885,7 +885,7 @@ public class JsParser {
                 if (match(TokenType.PUNCTUATION, "]")) {
                     break; // Trailing comma
                 } else if (match(TokenType.PUNCTUATION, ",")) {
-                    elements.add(null); // Elided element
+                    elements.add(new ConstantNode(Undefined.INSTANCE)); // Elided element
                 } else {
                     elements.add(parseAssignmentExpression());
                 }
