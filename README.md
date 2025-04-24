@@ -35,7 +35,7 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 - `number` (`int`, `long`, `double`)
 - `array` (Java `List`)
 - `object` (Java `Map`)
-- `function` (custom `JsFunction`)
+- `function` (custom `JsFunction` or native `BiFunction<Scope,List<Object>, Object>>`)
 - `Error`
 
 ### Supported Syntax and Features:
@@ -82,6 +82,7 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 - `class`, `instanceof`
 - `import/export`
 - `fetch`
+- `regex` - no regex object, only `String` parameter in `String.match` or `String.matchAll`
 - some JavaScript WTF behaviors (like `[] == 0`, etc.)
 
 ---
@@ -120,8 +121,8 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 ## 📖 Example Usage
 
 ```java
-import eu.aston.javajs.Scope;
-import eu.aston.javajs.JsSdk;
+import eu.aston.javajs.*;
+import eu.aston.javajs.AstNodes.ASTNode;
 String script = """           
                 var a = 5;
                 let b = 10;
@@ -133,7 +134,24 @@ Scope rootScope = new Scope();
 JsSdk.defineFunctions(rootScope);
 JsLexer lexer = new JsLexer(script);
 JsParser parser = new JsParser(lexer.tokenize());
-parser.parse().exec(rootScope);
+ASTNode programNode = parser.parse();
+programNode.exec(rootScope);
+```
+
+## Compile Once, Run Many
+
+One of the key advantages of the compiled `AstNode` program is its stateless and thread-safe design. This means that once a program is compiled, it can be executed multiple times—across different threads—without any risk of shared state corruption or race conditions.
+
+```java
+JsLexer lexer = new JsLexer(script);
+JsParser parser = new JsParser(lexer.tokenize());
+ASTNode programNode = parser.parse();
+
+for(int i=0; i<10; i++){
+     Scope rootScope = new Scope();
+     JsSdk.defineFunctions(rootScope);
+     programNode.exec(rootScope);
+}
 ```
 ## 📚 Documentation
 

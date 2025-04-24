@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class JsScriptLexer {
+public class JsLexer {
 
     // All ECMAScript 3.1 keywords
     private static final Map<String, TokenType> RESERVED_WORDS = new HashMap<>();
@@ -32,14 +32,14 @@ public class JsScriptLexer {
     private int line;
     private int column;
 
-    public JsScriptLexer(String input) {
+    public JsLexer(String input) {
         this.input = input;
         this.position = 0;
         this.line = 1;
         this.column = 1;
     }
 
-    public JsScriptLexer(String input, int line, int column){
+    public JsLexer(String input, int line, int column){
         this.input = input;
         this.position = 0;
         this.line = line;

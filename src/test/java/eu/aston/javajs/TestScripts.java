@@ -32,7 +32,7 @@ public class TestScripts {
     }
 
     private void runScript(Scope rootScope, String script) {
-        JsScriptLexer lexer = new JsScriptLexer(script+script2);
+        JsLexer lexer = new JsLexer(script+script2);
         JsParser parser = new JsParser(lexer.tokenize());
         AstNodes.ASTNode root = parser.parse();
         root.exec(rootScope);

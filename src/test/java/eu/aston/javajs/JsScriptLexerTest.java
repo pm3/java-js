@@ -11,7 +11,7 @@ public class JsScriptLexerTest {
     public void testTemplateStringLexing() {
         // Test basic template string
         String input = "`Hello, world!`";
-        JsScriptLexer lexer = new JsScriptLexer(input);
+        JsLexer lexer = new JsLexer(input);
         List<Token> tokens = lexer.tokenize();
         
         assertEquals(1, tokens.size());
@@ -20,7 +20,7 @@ public class JsScriptLexerTest {
         
         // Test template string with interpolation
         input = "`Hello, ${name}!`";
-        lexer = new JsScriptLexer(input);
+        lexer = new JsLexer(input);
         tokens = lexer.tokenize();
         
         assertEquals(1, tokens.size());
@@ -29,7 +29,7 @@ public class JsScriptLexerTest {
         
         // Test template string with nested expressions
         input = "`Result: ${ a + b * (c / d) }`";
-        lexer = new JsScriptLexer(input);
+        lexer = new JsLexer(input);
         tokens = lexer.tokenize();
         
         assertEquals(1, tokens.size());
@@ -38,7 +38,7 @@ public class JsScriptLexerTest {
         
         // Test template string with nested template strings
         input = "`Outer ${ `Inner ${value}` }`";
-        lexer = new JsScriptLexer(input);
+        lexer = new JsLexer(input);
         tokens = lexer.tokenize();
         
         assertEquals(1, tokens.size());
@@ -47,7 +47,7 @@ public class JsScriptLexerTest {
         
         // Test multiline template string
         input = "`Line 1\nLine 2\nLine 3`";
-        lexer = new JsScriptLexer(input);
+        lexer = new JsLexer(input);
         tokens = lexer.tokenize();
         
         assertEquals(1, tokens.size());
@@ -56,7 +56,7 @@ public class JsScriptLexerTest {
         
         // Test complex template string with multiple interpolations
         input = "`User ${user.name} has ${user.messages.length} messages and ${user.isActive ? 'is' : 'is not'} active.`";
-        lexer = new JsScriptLexer(input);
+        lexer = new JsLexer(input);
         tokens = lexer.tokenize();
         
         assertEquals(1, tokens.size());

@@ -51,7 +51,7 @@ public class ManualTestAll {
                     JsSdk.defineFunctions(rootScope);
                     rootScope.nativeFunction("print()", (scope, args)-> {System.out.println(args); return null; });
                     rootScope.nativeFunction("Error(val)", (scope, args) -> JsTypes.toString(args.getFirst()));
-                    JsScriptLexer lexer = new JsScriptLexer(script+script2);
+                    JsLexer lexer = new JsLexer(script+script2);
                     JsParser parser = new JsParser(lexer.tokenize());
                     ASTNode root = parser.parse();
 
@@ -64,7 +64,7 @@ public class ManualTestAll {
                 }
             }
             if(f.isDirectory()){
-                //scanDir(f, js);
+                scanDir(f, filter);
             }
         }
     }
@@ -110,6 +110,19 @@ public class ManualTestAll {
             }
         }
 
+    }
+
+    public static void runScript(String script){
+
+        JsLexer lexer = new JsLexer(script);
+        JsParser parser = new JsParser(lexer.tokenize());
+        ASTNode programNode = parser.parse();
+
+        for(int i=0; i<10; i++){
+            Scope rootScope = new Scope();
+            JsSdk.defineFunctions(rootScope);
+            programNode.exec(rootScope);
+        }
     }
 
 }

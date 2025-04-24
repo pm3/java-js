@@ -836,21 +836,22 @@ public class JsParser {
         CatchClauseNode catchBlock = null;
         ASTNode finallyBlock = null;
 
+
         // Check for catch block
-        if (match(TokenType.KEYWORD, "catch")) {
-            expect(TokenType.KEYWORD, "catch");
-            expect(TokenType.PUNCTUATION, "(");
+        if (matchAdvance(TokenType.KEYWORD, "catch")) {
 
-            if (currentToken.getType() != TokenType.IDENTIFIER) {
-                throw new SyntaxError("Expected identifier in catch clause but got " + currentToken.getType()
-                                              + " at line " + currentToken.getLine()
-                                              + ", column " + currentToken.getColumn());
+            String param = null;
+            if(matchAdvance(TokenType.PUNCTUATION, "(")) {
+
+                if (currentToken.getType() != TokenType.IDENTIFIER) {
+                    throw new SyntaxError("Expected identifier but got " + currentToken.getType()
+                                                  + " at line " + currentToken.getLine()
+                                                  + ", column " + currentToken.getColumn());
+                }
+                param = currentToken.getValue();
+                advance();
+                expect(TokenType.PUNCTUATION, ")");
             }
-
-            String param = currentToken.getValue();
-            advance();
-
-            expect(TokenType.PUNCTUATION, ")");
             ASTNode catchBody = parseBlock();
             catchBlock = new CatchClauseNode(param, catchBody);
         }
@@ -1044,7 +1045,7 @@ public class JsParser {
                 String tokenStr = subtoken.getValue();
                 if(tokenStr.isEmpty()) continue;
                 if(tokenStr.startsWith("${")){
-                    JsScriptLexer lexer = new JsScriptLexer(tokenStr.substring(1), subtoken.getLine(), subtoken.getColumn());
+                    JsLexer lexer = new JsLexer(tokenStr.substring(1), subtoken.getLine(), subtoken.getColumn());
                     JsParser parser = new JsParser(lexer.tokenize());
                     BlockNode block = parser.parseBlock();
                     if(block.statements.size()==1 && block.statements.getFirst() instanceof ExecuteWithReturn){
