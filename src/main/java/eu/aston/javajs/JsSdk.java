@@ -86,6 +86,9 @@ public class JsSdk {
         scope.nativeFunction("Array.unshift()", parentTypeFunction(List.class, JsSdk::array_unshift));
         scope.nativeFunction("Array.with(index,value)", parentTypeFunction(List.class, JsSdk::array_with));
 
+        scope.nativeFunction("Function.apply(thisArg, argsArray)", parentTypeFunction(JsFunction.class, JsSdk::function_apply));
+        scope.nativeFunction("Function.call(thisArg)", parentTypeFunction(JsFunction.class, JsSdk::function_call));
+
         scope.putVariable("Object", Map.of(
                 "isExtensible", new JsFunction("isExtensible", List.of("val"), JsSdk::object_isExtensible),
                 "assign", new JsFunction("assign", List.of("target", "sources"), JsSdk::object_assign),
@@ -131,7 +134,7 @@ public class JsSdk {
     }
 
     @FunctionalInterface
-    public static interface ScopeFunction<T>{
+    public interface ScopeFunction<T>{
         Object apply(Scope scope, List<Object> args, T parent);
     }
 
@@ -1109,4 +1112,27 @@ public class JsSdk {
         Map<String, Object> obj = (Map<String, Object>) args.getFirst();
         return new ArrayList<>(obj.values());
     }
+
+    // Function.prototype.apply()
+    public static Object function_apply(Scope scope, List<Object> args, JsFunction fn) {
+        Object thisArg = args.getFirst();
+        List<Object> fnArgs = args.size() > 1 && args.get(1) instanceof List ? 
+                             (List<Object>) args.get(1) : 
+                             new ArrayList<>();
+        while(fnArgs.size()<fn.params.size()){
+            fnArgs.add(Undefined.INSTANCE);
+        }
+        return fn.setParent(thisArg).exec(scope, fnArgs);
+    }
+
+    // Function.prototype.call()
+    public static Object function_call(Scope scope, List<Object> args, JsFunction fn) {
+        Object thisArg = args.isEmpty() ? null : args.getFirst();
+        List<Object> fnArgs = args.size() > 1 ? args.subList(1, args.size()) : new ArrayList<>();
+        while(fnArgs.size()<fn.params.size()){
+            fnArgs.add(Undefined.INSTANCE);
+        }
+        return fn.setParent(thisArg).exec(scope, fnArgs);
+    }
+
 }

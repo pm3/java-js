@@ -49,15 +49,6 @@ public class JsParser {
         return token2.getType() == type && token2.getValue().equals(value);
     }
 
-    private void expect(TokenType type) {
-        if (currentToken.getType() != type) {
-            throw new SyntaxError("Expected " + type + " but got " + currentToken.getType()
-                                          + " at line " + currentToken.getLine()
-                                          + ", column " + currentToken.getColumn());
-        }
-        advance();
-    }
-
     private void expect(TokenType type, String value) {
         if (currentToken.getType() != type || !currentToken.getValue().equals(value)) {
             throw new SyntaxError("Expected " + type + " with value '" + value + "' but got "
@@ -83,8 +74,15 @@ public class JsParser {
     private ASTNode parseProgram() {
         ProgramNode program = new ProgramNode();
 
-        while (currentToken.getType() != TokenType.EOF) {
-            program.addStatement(parseStatement());
+        try{
+            while (currentToken.getType() != TokenType.EOF) {
+                program.addStatement(parseStatement());
+            }
+        }catch (SyntaxError e){
+            throw e;
+        }catch (Exception e){
+            throw new SyntaxError(e.getMessage()+" "+ " at line " + currentToken.getLine() +
+                                          ", column " + currentToken.getColumn());
         }
 
         return program;

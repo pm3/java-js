@@ -1,6 +1,6 @@
-  // Create sparse array
-  let arr3 = [];
-  arr3[0] = 1;
-  arr3[2] = 3;
-  assert(arr3.length === 3, "Sparse array has correct length");
-  assert(arr3[1] === undefined, "Missing array item is undefined");
+  // Test 'this' binding with call()
+  function getValueFn() {
+    return this.value;
+  }
+  const obj3 = { value: 100 };
+  assert(getValueFn.call(obj3) === 100, "'this' can be explicitly bound using call()");

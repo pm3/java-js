@@ -1,6 +1,5 @@
 package eu.aston.javajs;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -16,6 +15,7 @@ public record GetSet(Object value, Consumer<Object> setter) {
             case Map map -> mapGet(map, property, scope);
             case List list -> listGet(list, property, scope);
             case String str -> stringGet(str, property, scope);
+            case JsFunction fn -> functionGet(fn, property, scope);
             case Scope scope2 -> scopeGet(scope2, property);
             case null, default -> throw new NotFoundException(
                     "Cannot read property '" + property + "' of " + JsTypes.typeof(parent));
@@ -81,6 +81,7 @@ public record GetSet(Object value, Consumer<Object> setter) {
             if(function!=null){
                 return function.setParent(list);
             }
+            throw new NotFoundException("Array function '" + property + "' is not defined");
         }
         Integer index = parseIndex(property);
         if(index!=null){
@@ -119,6 +120,16 @@ public record GetSet(Object value, Consumer<Object> setter) {
             }
         }
         return index;
+    }
+
+    private static Object functionGet(JsFunction fn, Object property, Scope scope) {
+        if(property instanceof String){
+            JsFunction function = scope.getFunction("Function."+property);
+            if(function!=null){
+                return function.setParent(fn);
+            }
+        }
+        throw new NotFoundException("Function type function '" + property + "' is not defined");
     }
 
     public static Object scopeGet(Scope scope2, Object property) {

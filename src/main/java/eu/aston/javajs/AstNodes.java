@@ -581,7 +581,6 @@ public class AstNodes {
             }catch (ExecuteScriptException e){
                 throw e;
             }catch (Exception e){
-                e.printStackTrace();
                 throw new ExecuteScriptException("Error in assignment "+e.getMessage(), null);
             }
         }
@@ -682,9 +681,9 @@ public class AstNodes {
 
     private static final List<String> futuredReservedWords = List.of(
             "class", "debugger",
-            "delete", "export", "extends",
-            "import", "in", "instanceof", "new",
-            "super", "void", "with"
+            "delete", "enum", "export", "extends",
+            "import", "in", "instanceof", "interface", "new",
+            "super", "package", "private", "protected", "public", "void", "with"
     );
 
     public static class IdentifierNode extends ASTNode implements ExecuteWithReturn, GetSetReturn {
@@ -748,7 +747,7 @@ public class AstNodes {
             for (PropertyNode property : properties) {
                 Object value = wrapOptionalNotFound(property.value, scope);
                 if(value instanceof JsFunction functionValue){
-                    value = functionValue.setParent(functionValue);
+                    value = functionValue.setParent(object);
                 }
                 object.put(property.key, value);
             }

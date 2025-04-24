@@ -113,6 +113,49 @@ function testFunctionsAsParameters() {
   assert(squared.join(',') === "1,4,9,16,25", "Array processor correctly applies inline function");
 }
 
+// Test calling non-function property as a function
+function testNonFunctionPropertyCall() {
+  const obj = {
+    number: 42,
+    text: "hello"
+  };
+
+  assertError(function() {
+    obj.number(); // Try to call number as a function
+  }, "obj.number is not a function");
+
+  assertError(function() {
+    obj.text(); // Try to call string as a function  
+  }, "obj.text is not a function");
+}
+// Test 'this' operator behavior
+function testThisOperator() {
+  // Test 'this' in object method
+  const obj = {
+    value: 42,
+    getValue: function() {
+      return this.value;
+    }
+  };
+  assert(obj.getValue() === 42, "'this' refers to object in method");
+
+  // Test 'this' in arrow function
+  assertError(()=>{
+      const obj2 = {
+        value: 42,
+        getValue: () => this.value
+      };
+      obj2.getValue();
+  });
+
+  // Test 'this' binding with call()
+  function getValueFn() {
+    return this.value;
+  }
+  const obj3 = { value: 100 };
+  assert(getValueFn.call(obj3) === 100, "'this' can be explicitly bound using call()");
+}
+
 const functions = [
     testFunctionDeclaration,
     testFunctionExpression,
@@ -120,7 +163,10 @@ const functions = [
     testDefaultParameters,
     testRestParameters,
     testHigherOrderFunctions,
-    testFunctionsAsParameters];
+    testFunctionsAsParameters,
+    testNonFunctionPropertyCall,
+    testThisOperator
+];
 for(let testFunction of functions) {
     try {
         testFunction();

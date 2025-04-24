@@ -41,6 +41,7 @@ public class JsFunction implements IJsType {
     }
 
     public JsFunction setParent(Object parent) {
+        if(useLocalScope) return this;
         return new JsFunction(name, params, body, nativeFunction, useLocalScope, parent);
     }
 

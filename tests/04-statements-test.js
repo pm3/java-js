@@ -348,6 +348,43 @@ function testMultiLineStatements() {
     "Multi-line if-else statement works correctly");
 }
 
+// Test future reserved words
+function testFutureReservedWords() {
+  // Test that future reserved words cannot be used as identifiers
+  assertError(function() {
+    const enum = 5; // enum is a future reserved word
+  }, "Unexpected token 'enum'");
+
+  assertError(function() {
+    let await = 10; // await is a future reserved word
+  }, "Unexpected token 'await'");
+
+  assertError(function() {
+    var implements = "test"; // implements is a future reserved word
+  }, "Unexpected token 'implements'");
+
+  assertError(function() {
+    const interface = {}; // interface is a future reserved word 
+  }, "Unexpected token 'interface'");
+
+  assertError(function() {
+    let package = []; // package is a future reserved word
+  }, "Unexpected token 'package'");
+
+  assertError(function() {
+    var private = true; // private is a future reserved word
+  }, "Unexpected token 'private'");
+
+  assertError(function() {
+    const protected = "test"; // protected is a future reserved word
+  }, "Unexpected token 'protected'");
+
+  assertError(function() {
+    let public = 42; // public is a future reserved word
+  }, "Unexpected token 'public'");
+}
+
+
 // Run all tests
 const functions = [
     testConditionalStatements,

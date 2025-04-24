@@ -129,6 +129,43 @@ function testClosures() {
   assert(counter() === 4, "Original counter continues from 4");
 }
 
+// Test duplicate variable declarations
+function testDuplicateDeclarations() {
+
+  // Test duplicate var declarations - should throw error
+  assertError(() => {
+    var x = 1;
+    var x = 2; // SyntaxError in strict mode
+  }, "Identifier 'x' has already been declared");
+
+  // Test duplicate let declarations - should throw error
+  assertError(() => {
+    let y = 1;
+    let y = 2; // SyntaxError in strict mode
+  }, "Identifier 'y' has already been declared");
+
+  // Test duplicate const declarations - should throw error  
+  assertError(() => {
+    const z = 1;
+    const z = 2; // SyntaxError in strict mode
+  }, "Identifier 'z' has already been declared");
+
+  // Test var/let conflict
+  assertError(() => {
+    var a = 1;
+    let a = 2; // SyntaxError - can't redeclare with let
+  }, "Identifier 'a' has already been declared");
+
+  // Test var/const conflict
+  assertError(() => {
+    var b = 1;
+    const b = 2; // SyntaxError - can't redeclare with const
+  }, "Identifier 'b' has already been declared");
+}
+
+
+
+
 // Run all tests
 const functions = [
     testGlobalScope,
@@ -137,7 +174,9 @@ const functions = [
     testLexicalScope,
     testHoisting,
     testFunctionHoisting,
-    testClosures];
+    testClosures,
+    testDuplicateDeclarations
+  ];
 for(let testFunction of functions) {
     try {
         testFunction();

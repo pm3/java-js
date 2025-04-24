@@ -72,18 +72,6 @@ public class Scope implements IJsType, AutoCloseable {
         return varAccess;
     }
 
-    public void replaceVar(String identifier, Object newValue) {
-        VarAccess varAccess = getVar(identifier);
-        if (varAccess!=null) {
-            if (varAccess.constant) {
-                throw new RuntimeException("Assignment to constant variable '" + identifier+"'");
-            }
-            varAccess.value = newValue;
-        } else {
-            throw new RuntimeException("Cannot set undefined variable '" + identifier+"'");
-        }
-    }
-
     public void putVariable(String name, Object value) {
         variables.put(name, new VarAccess(false, value, level));
     }

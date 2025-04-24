@@ -186,6 +186,38 @@ function testEscapeSequences() {
   assert(specialStr === "\"'", "Escape sequences with special characters work correctly");
 }
 
+function testObjectCreation() {
+  // Test basic object creation
+  const obj = {
+    name: "test",
+    value: 42
+  };
+  assert(obj.name === "test" && obj.value === 42, "Basic object creation works correctly");
+
+  // Test that duplicate property names are not allowed (last one wins)
+  const objWithDuplicates = {
+    prop: "first",
+    prop: "second" // This should overwrite the first one
+  };
+  assert(objWithDuplicates.prop === "second", "Duplicate property takes last value");
+
+  // Test with different property types
+  const mixedObj = {
+    string: "text",
+    number: 123,
+    boolean: true,
+    array: [1,2,3],
+    nested: {
+      x: 1
+    }
+  };
+  assert(typeof mixedObj.string === "string" &&
+         typeof mixedObj.number === "number" &&
+         typeof mixedObj.boolean === "boolean" &&
+         Array.isArray(mixedObj.array) &&
+         typeof mixedObj.nested === "object",
+         "Object can contain different types of properties");
+}
 
 // Run all tests
 const functions = [
@@ -195,7 +227,9 @@ const functions = [
     testVariableScope,
     testArrayWithEmptyItems,
     testMultilineStrings,
-    testEscapeSequences];
+    testEscapeSequences,
+    testObjectCreation
+];
 for(let testFunction of functions) {
     try {
         testFunction();
@@ -203,6 +237,7 @@ for(let testFunction of functions) {
         assert(false, "method "+testFunction+" error "+error);
     }
 }
+
 
 
 
