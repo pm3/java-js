@@ -162,9 +162,18 @@ public class JsParser {
                     + " at line " + currentToken.getLine()
                     + ", column " + currentToken.getColumn());
         }
-        String keyword = currentToken.getValue();
-        VariableStatementNode node = new VariableStatementNode(keyword);
+        String access = currentToken.getValue();
+        VariableStatementNode node = new VariableStatementNode(access);
         advance();
+
+        if(match(TokenType.PUNCTUATION, "[")){
+            //destructing array
+            return parseDestructingArray(access);
+        }
+        if(match(TokenType.PUNCTUATION, "{")){
+            //destructing object
+            return parseDestructingObject(access);
+        }
 
         // Parse first variable declaration
         node.addDeclaration(parseVariableDeclaration());
@@ -197,6 +206,78 @@ public class JsParser {
         return new VariableDeclarationNode(identifier, initializer);
     }
 
+    private ASTNode parseDestructingArray(String access){
+        List<String> names = new ArrayList<>();
+        String restName = null;
+
+        expect(TokenType.PUNCTUATION, "[");
+        while (true){
+            if(currentToken.getType()==TokenType.IDENTIFIER){
+                names.add(currentToken.getValue());
+                advance();
+                if(matchAdvance(TokenType.PUNCTUATION, ",")){
+                    continue;
+                }
+                if(matchAdvance(TokenType.PUNCTUATION, "]")){
+                    break;
+                }
+                throw new SyntaxError("Expected ] but got " + currentToken.getType() + " with value '" + currentToken.getValue() + "'"
+                                          + " at line " + currentToken.getLine() +
+                                          ", column " + currentToken.getColumn());
+            }
+            if(currentToken.getType()==TokenType.REST_IDENTIFIER){
+                restName = currentToken.getValue().substring(3);
+                advance();
+                expect(TokenType.PUNCTUATION, "]");
+                break;
+            }
+            if(matchAdvance(TokenType.PUNCTUATION, ",")){
+                names.add("");
+                continue;
+            }
+            throw new SyntaxError("Expected ] but got " + currentToken.getType() + " with value '" + currentToken.getValue() + "'"
+                                          + " at line " + currentToken.getLine() +
+                                          ", column " + currentToken.getColumn());
+        }
+        expect(TokenType.OPERATOR, "=");
+        ASTNode right = parseAssignmentExpression();
+        return new DestructuringArrayNode(access, names, restName, right);
+    }
+
+    private ASTNode parseDestructingObject(String access){
+        List<String> names = new ArrayList<>();
+        String restName = null;
+
+        expect(TokenType.PUNCTUATION, "{");
+        while (true){
+            if(currentToken.getType()==TokenType.IDENTIFIER){
+                names.add(currentToken.getValue());
+                advance();
+                if(matchAdvance(TokenType.PUNCTUATION, ",")){
+                    continue;
+                }
+                if(matchAdvance(TokenType.PUNCTUATION, "}")){
+                    break;
+                }
+                throw new SyntaxError("Expected } but got " + currentToken.getType() + " with value '" + currentToken.getValue() + "'"
+                                          + " at line " + currentToken.getLine() +
+                                          ", column " + currentToken.getColumn());
+            }
+            if(currentToken.getType()==TokenType.REST_IDENTIFIER){
+                restName = currentToken.getValue().substring(3);
+                advance();
+                expect(TokenType.PUNCTUATION, "}");
+                break;
+            }
+            throw new SyntaxError("Expected } but got " + currentToken.getType() + " with value '" + currentToken.getValue() + "'"
+                                          + " at line " + currentToken.getLine() +
+                                          ", column " + currentToken.getColumn());
+        }
+        expect(TokenType.OPERATOR, "=");
+        ASTNode right = parseAssignmentExpression();
+        return new DestructuringObjectNode(access, names, restName, right);
+    }
+    
     // ExpressionStatement = Expression ";"
     private ASTNode parseExpressionStatement() {
         ASTNode expression = parseExpression();
@@ -273,7 +354,7 @@ public class JsParser {
         if(variableAccess() && tokens.get(tokenPosition).getType() == TokenType.IDENTIFIER &&
            matchPos(tokenPosition+1, TokenType.KEYWORD,"in")) {
             // Handle for-in loop
-            String access = currentToken.getValue();
+            //String access = currentToken.getValue();
             advance();
             String identifier = currentToken.getValue();
             advance();
@@ -286,7 +367,7 @@ public class JsParser {
         if(variableAccess() && tokens.get(tokenPosition).getType() == TokenType.IDENTIFIER &&
                 matchPos(tokenPosition+1, TokenType.KEYWORD,"of")) {
             // Handle for-of loop
-            String access = currentToken.getValue();
+            //String access = currentToken.getValue();
             advance();
             String identifier = currentToken.getValue();
             advance();
@@ -311,6 +392,7 @@ public class JsParser {
         } else if (match(TokenType.PUNCTUATION, ";")) {
             // Check for semicolon (empty initialization)
             // No initialization
+            advance();
         } else {
             // Otherwise it's an expression
             init = parseExpression();

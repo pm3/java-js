@@ -1,6 +1,7 @@
 package eu.aston.javajs;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -116,13 +117,103 @@ public class AstNodes {
         @Override
         public Object exec(Scope scope) {
             Object value = initializer!=null ? wrapOptionalNotFound(initializer, scope) : Undefined.INSTANCE;
-            switch (access) {
-                case "var" -> scope.defineVar(identifier, value);
-                case "let" -> scope.defineLocalVar(false, identifier, value);
-                case "const" -> scope.defineLocalVar(true, identifier, value);
-                default -> throw new RuntimeException("Invalid variable type: " + access);
-            }
+            defineVariable(scope, access, identifier, value);
             return value;
+        }
+    }
+
+    private static void defineVariable(Scope scope, String access, String identifier, Object value) {
+        switch (access) {
+            case "var" -> scope.defineVar(identifier, value);
+            case "let" -> scope.defineLocalVar(false, identifier, value);
+            case "const" -> scope.defineLocalVar(true, identifier, value);
+            default -> throw new RuntimeException("Invalid variable type: " + access);
+        }
+    }
+
+    public static class DestructuringArrayNode extends ASTNode {
+        protected String access;
+        protected List<String> names;
+        protected String restName;
+        protected ASTNode right;
+
+        public DestructuringArrayNode(String access, List<String> names, String restName, ASTNode right) {
+            this.access = access;
+            this.names = names;
+            this.restName = restName;
+            this.right = right;
+        }
+
+        @Override
+        public Object exec(Scope scope) {
+            Object rightValue = wrapOptionalNotFound(right, scope);
+            if(rightValue instanceof List<?> l){
+                for (int i=0; i<names.size(); i++){
+                    String name = names.get(i);
+                    if(!name.isEmpty()) {
+                        Object value = i < l.size() ? l.get(i) : Undefined.INSTANCE;
+                        defineVariable(scope, access, name, value);
+                    }
+                }
+                if(restName!=null){
+                    Object value = names.size()<l.size() ? l.subList(names.size(), l.size()) : Undefined.INSTANCE;
+                    defineVariable(scope,access,restName, value);
+                }
+            } else {
+                for (String name : names) {
+                    if(!name.isEmpty()) {
+                        defineVariable(scope, access, name, Undefined.INSTANCE);
+                    }
+                }
+                if(restName!=null){
+                    defineVariable(scope,access,restName, Undefined.INSTANCE);
+                }
+            }
+            return null;
+        }
+    }
+
+    public static class DestructuringObjectNode extends ASTNode {
+        protected String access;
+        protected List<String> names;
+        protected String restName;
+        protected ASTNode right;
+
+        public DestructuringObjectNode(String access, List<String> names, String restName, ASTNode right) {
+            this.access = access;
+            this.names = names;
+            this.restName = restName;
+            this.right = right;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Object exec(Scope scope) {
+            Object rightValue = wrapOptionalNotFound(right, scope);
+            if(rightValue instanceof Map) {
+                Map<String, Object> map = (Map<String, Object>)rightValue;
+                for (String n : names){
+                    Object value = map.getOrDefault(n, Undefined.INSTANCE);
+                    defineVariable(scope,access,n, value);
+                }
+                if(restName!=null){
+                    Map<String,Object> restMap = new HashMap<>();
+                    for(Map.Entry<String,Object> e : map.entrySet()){
+                        if(!names.contains(e.getKey())){
+                            restMap.put(e.getKey(), e.getValue());
+                        }
+                    }
+                    defineVariable(scope,access,restName, restMap);
+                }
+            } else {
+                for (String name : names) {
+                    defineVariable(scope, access, name, Undefined.INSTANCE);
+                }
+                if(restName!=null){
+                    defineVariable(scope,access, restName, Undefined.INSTANCE);
+                }
+            }
+            return null;
         }
     }
 

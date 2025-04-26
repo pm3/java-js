@@ -219,6 +219,32 @@ function testObjectCreation() {
          "Object can contain different types of properties");
 }
 
+// Test destructuring arrays and objects during variable declaration
+function testDestructuring() {
+  // Array destructuring
+  const numbers = [1, 2, 3, 4, 5];
+  const [first, second, ...rest] = numbers;
+  
+  assert(first === 1, "Array destructuring gets first element");
+  assert(second === 2, "Array destructuring gets second element");
+  assert(Array.isArray(rest), "Rest operator creates an array");
+  assert(rest.length === 3, "Rest array has correct length");
+  assert(rest[0] === 3 && rest[1] === 4 && rest[2] === 5, "Rest array contains remaining elements");
+  
+  // Skipping elements
+  const [a, , c] = [10, 20, 30];
+  assert(a === 10, "Array destructuring allows skipping elements (first element)");
+  assert(c === 30, "Array destructuring allows skipping elements (third element)");
+  
+  // Object destructuring
+  const person = { name: "Alice", age: 30, city: "Wonderland" };
+  const { name, age } = person;
+  
+  assert(name === "Alice", "Object destructuring gets property by name");
+  assert(age === 30, "Object destructuring gets property by name");    
+}
+
+
 // Run all tests
 const functions = [
     testVariableDeclarations,
@@ -228,7 +254,8 @@ const functions = [
     testArrayWithEmptyItems,
     testMultilineStrings,
     testEscapeSequences,
-    testObjectCreation
+    testObjectCreation,
+    testDestructuring
 ];
 for(let testFunction of functions) {
     try {

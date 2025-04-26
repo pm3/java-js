@@ -4,6 +4,7 @@ package eu.aston.javajs;
 public enum TokenType {
     KEYWORD,
     IDENTIFIER,
+    REST_IDENTIFIER,
     NUMBER,
     STRING,
     BOOLEAN,

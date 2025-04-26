@@ -346,6 +346,26 @@ public class JsLexer {
                         position += 3;
                         column += 3;
                         return new Token(TokenType.OPERATOR, threeChars, startLine, startColumn);
+                    case "...":
+                        // Check if this is a rest operator followed by an identifier
+                        if (position + 3 < input.length() && isIdentifierStart(input.charAt(position + 3))) {
+                            position += 3;
+                            column += 3;
+                            StringBuilder sb = new StringBuilder("...");
+                            
+                            // Collect the identifier following the rest operator
+                            while (position < input.length() && isIdentifierPart(input.charAt(position))) {
+                                sb.append(input.charAt(position));
+                                position++;
+                                column++;
+                            }
+                            
+                            return new Token(TokenType.REST_IDENTIFIER, sb.toString(), startLine, startColumn);
+                        }
+                        // If not followed by an identifier, treat as normal operator
+                        position += 3;
+                        column += 3;
+                        return new Token(TokenType.OPERATOR, threeChars, startLine, startColumn);
                 }
             }
 
