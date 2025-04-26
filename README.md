@@ -111,8 +111,8 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 ```xml
 <dependency>
    <groupId>eu.aston</groupId>
-   <artifactId>micro-script-jvm</artifactId>
-   <version>1.0</version>
+   <artifactId>java-js</artifactId>
+   <version>1.0.0</version>
 </dependency>
 ```
 
