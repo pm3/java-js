@@ -6,7 +6,7 @@
 
     <groupId>eu.aston</groupId>
     <artifactId>java-js</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0-SNAPSHOT</version>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Lightweight JavaScript Subset for the JVM</description>
     <url>https://github.com/pm3/java-js</url>

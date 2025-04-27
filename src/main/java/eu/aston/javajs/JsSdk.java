@@ -108,6 +108,11 @@ public class JsSdk {
         scope.nativeFunction("Boolean(val)", (scope2,args)->JsTypes.toBoolean(args.getFirst()));
         scope.nativeFunction("Number(val)", (scope2,args)->JsTypes.toNumber(args.getFirst()));
         scope.nativeFunction("String(val)", (scope2,args)->JsTypes.toString(args.getFirst()));
+
+        scope.putVariable("JSON", Map.of(
+            "parse", new JsFunction("parse", List.of("val"), JsSdk::json_parse),
+            "stringify", new JsFunction("stringify", List.of("val"), JsSdk::json_stringify)
+        ));
     }
 
     // parseInt function
@@ -1133,6 +1138,19 @@ public class JsSdk {
             fnArgs.add(Undefined.INSTANCE);
         }
         return fn.setParent(thisArg).exec(scope, fnArgs);
+    }
+
+    // Json.parse()
+    public static Object json_parse(Scope scope, List<Object> args) {
+        if(args.getFirst() instanceof String str){
+            return JsJson.parse(str);
+        }
+        return null;
+    }
+
+    // Json.stringify()
+    public static String json_stringify(Scope scope, List<Object> args) {
+        return JsJson.stringify(scope, args.getFirst());
     }
 
 }

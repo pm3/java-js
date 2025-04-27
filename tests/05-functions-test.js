@@ -156,6 +156,105 @@ function testThisOperator() {
   assert(getValueFn.call(obj3) === 100, "'this' can be explicitly bound using call()");
 }
 
+// Test JSON parse and stringify
+function testJsonOperations() {
+    // Test parsing simple values
+    assert(JSON.parse("42") === 42, "Parse number");
+    assert(JSON.parse('"hello"') === "hello", "Parse string");
+    assert(JSON.parse("true") === true, "Parse boolean");
+    assert(JSON.parse("null") === null, "Parse null");
+
+    // Test parsing arrays
+    const arr = JSON.parse('[1,2,3]');
+    assert(Array.isArray(arr) && arr.length === 3 && arr[0] === 1, "Parse array");
+
+    // Test parsing objects
+    const obj = JSON.parse('{"name":"John","age":30}');
+    assert(obj.name === "John" && obj.age === 30, "Parse object");
+
+    // Test parsing nested structures
+    const nested = JSON.parse('{"arr":[1,2,{"x":true}]}');
+    assert(nested.arr[2].x === true, "Parse nested structure");
+
+    // Test stringify simple values
+    assert(JSON.stringify(42) === "42", "Stringify number");
+    assert(JSON.stringify("hello") === '"hello"', "Stringify string");
+    assert(JSON.stringify(true) === "true", "Stringify boolean");
+    assert(JSON.stringify(null) === "null", "Stringify null");
+
+    // Test stringify array
+    assert(JSON.stringify([1,2,3]) === "[1,2,3]", "Stringify array");
+
+    // Test stringify object
+    const testObj = {name: "John", age: 30};
+    assert(JSON.stringify(testObj) === '{"name": "John","age": 30}', "Stringify object");
+
+    // Test stringify nested structure
+    const nestedObj = {arr: [1, 2, {x: true}]};
+    assert(JSON.stringify(nestedObj) === '{"arr": [1,2,{"x": true}]}', "Stringify nested structure");
+
+    // Test that stringify ignores functions
+    const objWithFunction = {
+        name: "Test",
+        age: 25,
+        sayHello: function() { return "Hello"; },
+        greet: () => "Hi"
+    };
+    const objWithFunctionJson = JSON.stringify(objWithFunction);
+    print(objWithFunctionJson);
+    assert(JSON.parse(objWithFunctionJson).length === 2, "Stringify should ignore functions");
+
+    // Test array with functions
+    const arrayWithFunctions = [1, function(){}, "test", () => {}];
+    assert(JSON.stringify(arrayWithFunctions) === '[1,null,"test",null]', "Stringify should convert functions to null in arrays");
+
+    // Test error cases
+    assertError(() => {
+        JSON.parse("{invalid json}");
+    }, "Invalid JSON should throw error");
+
+    // Test more error cases for invalid JSON format
+    assertError(() => {
+        JSON.parse("[1,2,"); // Unclosed array
+    }, "Unclosed array should throw error");
+
+    assertError(() => {
+        JSON.parse('{"key":}'); // Missing value
+    }, "Missing value should throw error");
+
+    assertError(() => {
+        JSON.parse('{"key"'); // Unclosed object
+    }, "Unclosed object should throw error");
+
+    assertError(() => {
+        JSON.parse('"unclosed string'); // Unclosed string
+    }, "Unclosed string should throw error");
+
+    assertError(() => {
+        JSON.parse('{"a":1 "b":2}'); // Missing comma
+    }, "Missing comma should throw error");
+
+    assertError(() => {
+        JSON.parse('{"a" 1}'); // Missing colon
+    }, "Missing colon should throw error");
+
+    assertError(() => {
+        JSON.parse('tru'); // Invalid boolean
+    }, "Invalid boolean should throw error");
+
+    assertError(() => {
+        JSON.parse('nul'); // Invalid null
+    }, "Invalid null should throw error");
+
+    assertError(() => {
+        JSON.parse('12.34.56'); // Invalid number format
+    }, "Invalid number format should throw error");
+
+    assertError(() => {
+        JSON.parse('[1,2,,3]'); // Extra comma in array
+    }, "Extra comma in array should throw error");
+}
+
 const functions = [
     testFunctionDeclaration,
     testFunctionExpression,
@@ -165,7 +264,8 @@ const functions = [
     testHigherOrderFunctions,
     testFunctionsAsParameters,
     testNonFunctionPropertyCall,
-    testThisOperator
+    testThisOperator,
+    testJsonOperations
 ];
 for(let testFunction of functions) {
     try {
