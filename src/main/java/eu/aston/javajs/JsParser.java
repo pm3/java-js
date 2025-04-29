@@ -100,6 +100,16 @@ public class JsParser {
                 } else if (currentToken.getValue().equals(";")) {
                     advance(); // Skip semicolon
                     return new EmptyStatementNode();
+                } else if(currentToken.getValue().equals("[")){
+                    ASTNode node = parseDestructingArray(null);
+                    expectEndStatement();
+                    return node;
+                } else if(currentToken.getValue().equals("(") && matchPos(tokenPosition, TokenType.PUNCTUATION, "{")){
+                    matchAdvance(TokenType.PUNCTUATION, "(");
+                    ASTNode node =  parseDestructingObject(null);
+                    matchAdvance(TokenType.PUNCTUATION, ")");
+                    expectEndStatement();
+                    return node;
                 }
                 break;
 
@@ -1003,6 +1013,9 @@ public class JsParser {
     // PropertyAssignment = PropertyName ":" AssignmentExpression
     private PropertyNode parsePropertyAssignment() {
         String key = parsePropertyName();
+        if(match(TokenType.PUNCTUATION, ",") || match(TokenType.PUNCTUATION, "}")){
+            return new PropertyNode(key, new IdentifierNode(key));
+        }
         expect(TokenType.PUNCTUATION, ":");
         ASTNode value = parseAssignmentExpression();
 

@@ -217,6 +217,20 @@ function testObjectCreation() {
          Array.isArray(mixedObj.array) &&
          typeof mixedObj.nested === "object",
          "Object can contain different types of properties");
+
+  // Test object creation with computed property names
+  const a = "a";
+  const objWithComputedProp1 = { a };
+  assert(objWithComputedProp1.a === "a", "Computed property names work correctly, since a is not a reserved word");
+
+  const objWithComputedProp2 = { a, b: "b" };
+  assert(objWithComputedProp2.a === "a", "Computed property names work correctly, since a is not a reserved word"); 
+  assert(objWithComputedProp2.b === "b", "Computed property names work correctly"); 
+
+  const objWithComputedProp3 = { c: "c", a, b: "b" };
+  assert(objWithComputedProp3.a === "a", "Computed property names work correctly, since a is not a reserved word"); 
+  assert(objWithComputedProp3.b === "b", "Computed property names work correctly"); 
+  assert(objWithComputedProp3.c === "c", "Computed property names work correctly"); 
 }
 
 // Test destructuring arrays and objects during variable declaration

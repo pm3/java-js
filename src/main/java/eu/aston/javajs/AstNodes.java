@@ -124,6 +124,7 @@ public class AstNodes {
 
     private static void defineVariable(Scope scope, String access, String identifier, Object value) {
         switch (access) {
+            case null -> scope.putVariable(identifier, value);
             case "var" -> scope.defineVar(identifier, value);
             case "let" -> scope.defineLocalVar(false, identifier, value);
             case "const" -> scope.defineLocalVar(true, identifier, value);
