@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
+import eu.aston.javajs.types.IJsType;
+import eu.aston.javajs.types.JsFunction;
+
 public class Scope implements IJsType, AutoCloseable {
 
     private final Map<String, VarAccess> variables = new java.util.HashMap<>();

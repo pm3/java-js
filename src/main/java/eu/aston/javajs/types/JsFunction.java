@@ -1,10 +1,11 @@
-package eu.aston.javajs;
+package eu.aston.javajs.types;
 
 import java.util.List;
 import java.util.function.BiFunction;
 
 import eu.aston.javajs.AstNodes.ASTNode;
 import eu.aston.javajs.AstNodes.ReturnException;
+import eu.aston.javajs.Scope;
 
 public class JsFunction implements IJsType {
 
@@ -40,6 +41,14 @@ public class JsFunction implements IJsType {
         this.nativeFunction = nativeFunction;
         this.useLocalScope = useLocalScope;
         this.parent = parent;
+    }
+
+    public String name(){
+        return name;
+    }
+
+    public List<String> params() {
+        return params;
     }
 
     public JsFunction setParent(Object parent) {

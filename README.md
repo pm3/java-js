@@ -123,6 +123,8 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 ```java
 import eu.aston.javajs.*;
 import eu.aston.javajs.AstNodes.ASTNode;
+import eu.aston.javajs.types.JsSdk;
+
 String script = """           
                 var a = 5;
                 let b = 10;
@@ -134,7 +136,9 @@ Scope rootScope = JsSdk.createRootScope();
 JsLexer lexer = new JsLexer(script);
 JsParser parser = new JsParser(lexer.tokenize());
 ASTNode programNode = parser.parse();
-programNode.exec(rootScope);
+programNode.
+
+exec(rootScope);
 ```
 
 ## Compile Once, Run Many

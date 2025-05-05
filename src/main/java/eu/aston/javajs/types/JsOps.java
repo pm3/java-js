@@ -1,4 +1,4 @@
-package eu.aston.javajs;
+package eu.aston.javajs.types;
 
 import java.util.List;
 import java.util.Map;

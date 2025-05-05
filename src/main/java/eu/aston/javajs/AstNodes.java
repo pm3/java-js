@@ -7,6 +7,11 @@ import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import eu.aston.javajs.types.JsFunction;
+import eu.aston.javajs.types.JsOps;
+import eu.aston.javajs.types.JsTypes;
+import eu.aston.javajs.types.Undefined;
+
 @SuppressWarnings({"rawtypes"})
 public class AstNodes {
 
@@ -66,7 +71,7 @@ public class AstNodes {
         public Object exec(Scope scope) {
             try (Scope blockScope = scope.newBlock()) {
                 for (JsFunction function : functions) {
-                    blockScope.putVariable(function.name, function);
+                    blockScope.putVariable(function.name(), function);
                 }
                 for (ASTNode statement : statements) {
                     wrapOptionalNotFound(statement, blockScope);
@@ -988,7 +993,7 @@ public class AstNodes {
             }
             // Prepare arguments
             List<Object> args = new ArrayList<>();
-            for (int i = 0; i < Math.max(arguments.size(), function.params.size()); i++) {
+            for (int i = 0; i < Math.max(arguments.size(), function.params().size()); i++) {
                 Object argValue = Undefined.INSTANCE;
                 if (i < arguments.size()) {
                     argValue = wrapOptionalNotFound(arguments.get(i), scope);

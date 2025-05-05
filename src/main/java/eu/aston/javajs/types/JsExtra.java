@@ -1,7 +1,9 @@
-package eu.aston.javajs;
+package eu.aston.javajs.types;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import eu.aston.javajs.Scope;
 
 public class JsExtra {
 

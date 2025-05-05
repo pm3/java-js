@@ -5,6 +5,9 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import eu.aston.javajs.AstNodes.NotFoundException;
+import eu.aston.javajs.types.JsFunction;
+import eu.aston.javajs.types.JsTypes;
+import eu.aston.javajs.types.Undefined;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public record GetSet(Object value, Consumer<Object> setter) {

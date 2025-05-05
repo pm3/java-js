@@ -5,6 +5,8 @@ import java.lang.reflect.Field;
 import java.util.List;
 
 import eu.aston.javajs.AstNodes.ASTNode;
+import eu.aston.javajs.types.JsSdk;
+import eu.aston.javajs.types.JsTypes;
 
 public class ManualTestAll {
 

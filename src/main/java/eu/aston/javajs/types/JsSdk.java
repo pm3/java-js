@@ -1,4 +1,4 @@
-package eu.aston.javajs;
+package eu.aston.javajs.types;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,6 +12,8 @@ import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import eu.aston.javajs.Scope;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class JsSdk {
@@ -1304,7 +1306,7 @@ public class JsSdk {
         Object thisArg = args.getFirst();
         List<Object> fnArgs =
                 args.size() > 1 && args.get(1) instanceof List ? (List<Object>) args.get(1) : new ArrayList<>();
-        while (fnArgs.size() < fn.params.size()) {
+        while (fnArgs.size() < fn.params().size()) {
             fnArgs.add(Undefined.INSTANCE);
         }
         return fn.setParent(thisArg).exec(scope, fnArgs);
@@ -1314,7 +1316,7 @@ public class JsSdk {
     public static Object function_call(Scope scope, List<Object> args, JsFunction fn) {
         Object thisArg = args.isEmpty() ? null : args.getFirst();
         List<Object> fnArgs = args.size() > 1 ? args.subList(1, args.size()) : new ArrayList<>();
-        while (fnArgs.size() < fn.params.size()) {
+        while (fnArgs.size() < fn.params().size()) {
             fnArgs.add(Undefined.INSTANCE);
         }
         return fn.setParent(thisArg).exec(scope, fnArgs);
@@ -1323,14 +1325,14 @@ public class JsSdk {
     // Json.parse()
     public static Object json_parse(Scope scope, List<Object> args) {
         if (args.getFirst() instanceof String str) {
-            return JsJson.parse(str);
+            return JsonTokenizer.parse(str);
         }
         return null;
     }
 
     // Json.stringify()
     public static String json_stringify(Scope scope, List<Object> args) {
-        return JsJson.stringify(scope, args.getFirst());
+        return JsonTokenizer.stringify(scope, args.getFirst());
     }
 
 }

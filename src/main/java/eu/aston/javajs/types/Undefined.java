@@ -1,4 +1,4 @@
-package eu.aston.javajs;
+package eu.aston.javajs.types;
 
 public class Undefined implements IJsType {
     public static final Undefined INSTANCE = new Undefined();

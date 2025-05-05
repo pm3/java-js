@@ -1,4 +1,4 @@
-package eu.aston.javajs;
+package eu.aston.javajs.types;
 
 public interface IJsType {
     boolean toBoolean();

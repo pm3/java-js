@@ -42,6 +42,8 @@ import eu.aston.javajs.AstNodes.UnaryExpressionNode;
 import eu.aston.javajs.AstNodes.VariableDeclarationNode;
 import eu.aston.javajs.AstNodes.VariableStatementNode;
 import eu.aston.javajs.AstNodes.WhileStatementNode;
+import eu.aston.javajs.types.JsTypes;
+import eu.aston.javajs.types.Undefined;
 
 public class JsParser {
     private Token currentToken;
