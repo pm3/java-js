@@ -46,6 +46,10 @@ public class Token {
         return subtokens;
     }
 
+    public TokenPos tokenPos(){
+        return new TokenPos(line, column);
+    }
+
     @Override
     public String toString() {
         return "Token{" + "type=" + type + ", value='" + value + '\'' + ", line=" + line + ", column=" + column + '}';
