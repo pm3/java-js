@@ -9,12 +9,9 @@ public class JsLexer {
 
     // All ECMAScript 3.1 keywords
     private static final Map<String, TokenType> RESERVED_WORDS = new HashMap<>();
+
     static {
-        String[] keywords = {
-                "break", "case", "catch", "continue", "const", "default",
-                "do", "else", "finally", "for", "function", "if", "in",
-                "let", "of", "return", "switch", "this", "throw", "try", "typeof", "var", "while"
-        };
+        String[] keywords = {"break", "case", "catch", "continue", "const", "default", "do", "else", "finally", "for", "function", "if", "in", "let", "of", "return", "switch", "this", "throw", "try", "typeof", "var", "while"};
 
         for (String keyword : keywords) {
             RESERVED_WORDS.put(keyword, TokenType.KEYWORD);
@@ -39,7 +36,7 @@ public class JsLexer {
         this.column = 1;
     }
 
-    public JsLexer(String input, int line, int column){
+    public JsLexer(String input, int line, int column) {
         this.input = input;
         this.position = 0;
         this.line = line;
@@ -243,8 +240,7 @@ public class JsLexer {
         // Decimal number
         boolean hasDecimalPoint = false;
         while (position < input.length() &&
-                (isDigit(input.charAt(position)) ||
-                        (input.charAt(position) == '.' && !hasDecimalPoint))) {
+                (isDigit(input.charAt(position)) || (input.charAt(position) == '.' && !hasDecimalPoint))) {
 
             if (input.charAt(position) == '.') {
                 hasDecimalPoint = true;
@@ -299,7 +295,7 @@ public class JsLexer {
                 column++;
                 break;
             } else if (ch == '\n') {
-                throw new RuntimeException("String literal contains newline at line "+line+", column "+column);
+                throw new RuntimeException("String literal contains newline at line " + line + ", column " + column);
             } else {
                 sb.append(ch);
                 position++;
@@ -352,14 +348,14 @@ public class JsLexer {
                             position += 3;
                             column += 3;
                             StringBuilder sb = new StringBuilder("...");
-                            
+
                             // Collect the identifier following the rest operator
                             while (position < input.length() && isIdentifierPart(input.charAt(position))) {
                                 sb.append(input.charAt(position));
                                 position++;
                                 column++;
                             }
-                            
+
                             return new Token(TokenType.REST_IDENTIFIER, sb.toString(), startLine, startColumn);
                         }
                         // If not followed by an identifier, treat as normal operator
@@ -442,9 +438,9 @@ public class JsLexer {
         int startColumn = column;
         StringBuilder sb = new StringBuilder();
         List<Token> subtokens = new ArrayList<>();
-        int lastDelimiterPos = position+1;
+        int lastDelimiterPos = position + 1;
         int lastDelimiterLine = line;
-        int lastDelimiterColumn = column+1;
+        int lastDelimiterColumn = column + 1;
 
         // Add opening backtick
         sb.append('`');
@@ -464,7 +460,9 @@ public class JsLexer {
                 break;
             } else if (ch == '$' && position + 1 < input.length() && input.charAt(position + 1) == '{') {
                 // Handle interpolation start
-                subtokens.add(new Token(TokenType.STRING, input.substring(lastDelimiterPos, position), lastDelimiterLine, lastDelimiterColumn));
+                subtokens.add(
+                        new Token(TokenType.STRING, input.substring(lastDelimiterPos, position), lastDelimiterLine,
+                                  lastDelimiterColumn));
                 lastDelimiterPos = position;
                 lastDelimiterLine = line;
                 lastDelimiterColumn = column;
@@ -477,7 +475,7 @@ public class JsLexer {
                 int nestedBraces = 1;
                 while (position < input.length() && nestedBraces > 0) {
                     ch = input.charAt(position);
-                    
+
                     if (ch == '{') {
                         nestedBraces++;
                         sb.append(ch);
@@ -496,13 +494,13 @@ public class JsLexer {
                         line++;
                         column = 1;
                         position++;
-                    } else if (ch == '\r' && position + 1 < input.length() &&
-                            input.charAt(position + 1) == '\n') {
+                    } else if (ch == '\r' && position + 1 < input.length() && input.charAt(position + 1) == '\n') {
                         line++;
                         column = 1;
                         position++;
                     } else if (ch == '\\') {
-                        throw new RuntimeException("Template string expression contains escape at line "+line+", column "+column);
+                        throw new RuntimeException(
+                                "Template string expression contains escape at line " + line + ", column " + column);
                     } else if (ch == '"' || ch == '\'' || ch == '`') {
                         // Handle quoted strings in interpolation to prevent closing on a brace within a string
                         sb.append(scanString().getValue());
@@ -512,7 +510,9 @@ public class JsLexer {
                         column++;
                     }
                 }
-                subtokens.add(new Token(TokenType.STRING, input.substring(lastDelimiterPos, position), lastDelimiterLine, lastDelimiterColumn));
+                subtokens.add(
+                        new Token(TokenType.STRING, input.substring(lastDelimiterPos, position), lastDelimiterLine,
+                                  lastDelimiterColumn));
                 lastDelimiterPos = position;
                 lastDelimiterLine = line;
                 lastDelimiterColumn = column;
@@ -528,7 +528,8 @@ public class JsLexer {
                 position++;
             }
         }
-        subtokens.add(new Token(TokenType.STRING, input.substring(lastDelimiterPos, position-1), lastDelimiterLine, lastDelimiterColumn));
+        subtokens.add(new Token(TokenType.STRING, input.substring(lastDelimiterPos, position - 1), lastDelimiterLine,
+                                lastDelimiterColumn));
         return new Token(TokenType.STRING_TEMPLATE, sb.toString(), startLine, startColumn, subtokens);
     }
 
@@ -539,7 +540,7 @@ public class JsLexer {
      * @param sb The string builder to append characters to
      */
     private void handleEscapeSequence(StringBuilder sb) {
-        if(position+1>=input.length()) {
+        if (position + 1 >= input.length()) {
             throw new RuntimeException("last character in file is \\");
         }
         position++;
@@ -575,29 +576,30 @@ public class JsLexer {
             case 'x':
                 //convert to \xXX to character
                 // Convert \xXX hex escape sequence to character
-                if (position + 2 < input.length() &&
-                        isHexDigit(input.charAt(position + 1)) &&
+                if (position + 2 < input.length() && isHexDigit(input.charAt(position + 1)) &&
                         isHexDigit(input.charAt(position + 2))) {
                     String hexStr = input.substring(position + 1, position + 3);
-                    sb.append((char)Integer.parseInt(hexStr, 16));
+                    sb.append((char) Integer.parseInt(hexStr, 16));
                     position += 2;
                     break;
                 }
-                throw new RuntimeException("Invalid escape sequence: \\x"+input.substring(position+1, position+3)+" at line "+line+", column "+column);
+                throw new RuntimeException(
+                        "Invalid escape sequence: \\x" + input.substring(position + 1, position + 3) + " at line " +
+                                line + ", column " + column);
             case 'u':
                 // Unicode escape sequence \\uXXXX to character
-                if (position + 4 < input.length() &&
-                        isHexDigit(input.charAt(position+1)) &&
-                        isHexDigit(input.charAt(position + 2)) &&
-                        isHexDigit(input.charAt(position + 3)) &&
+                if (position + 4 < input.length() && isHexDigit(input.charAt(position + 1)) &&
+                        isHexDigit(input.charAt(position + 2)) && isHexDigit(input.charAt(position + 3)) &&
                         isHexDigit(input.charAt(position + 4))) {
-                    sb.append((char)Integer.parseInt(input.substring(position + 1, position + 5), 16));
+                    sb.append((char) Integer.parseInt(input.substring(position + 1, position + 5), 16));
                     position += 4;
                     break;
                 }
-                throw new RuntimeException("Invalid escape sequence: \\u"+input.substring(position+1, position+5)+" at line "+line+", column "+column);
+                throw new RuntimeException(
+                        "Invalid escape sequence: \\u" + input.substring(position + 1, position + 5) + " at line " +
+                                line + ", column " + column);
             default:
-                throw new RuntimeException("Invalid escape sequence at line "+line+", column "+column);
+                throw new RuntimeException("Invalid escape sequence at line " + line + ", column " + column);
         }
         position++;
     }

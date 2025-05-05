@@ -2,7 +2,9 @@ package eu.aston.javajs;
 
 import java.util.List;
 import java.util.function.BiFunction;
-import eu.aston.javajs.AstNodes.*;
+
+import eu.aston.javajs.AstNodes.ASTNode;
+import eu.aston.javajs.AstNodes.ReturnException;
 
 public class JsFunction implements IJsType {
 
@@ -41,12 +43,15 @@ public class JsFunction implements IJsType {
     }
 
     public JsFunction setParent(Object parent) {
-        if(useLocalScope) return this;
+        if (useLocalScope) {
+            return this;
+        }
         return new JsFunction(name, params, body, nativeFunction, useLocalScope, parent);
     }
 
     public Object exec(Scope scope, List<Object> args) {
-        Scope functionScope = parent instanceof Scope ? ((Scope) parent).newFunctionBlock(useLocalScope, null) : scope.newFunctionBlock(useLocalScope, parent);
+        Scope functionScope = parent instanceof Scope ? ((Scope) parent).newFunctionBlock(useLocalScope, null)
+                                                      : scope.newFunctionBlock(useLocalScope, parent);
         functionScope.putVariable("arguments", args);
         for (int i = 0; i < params.size(); i++) {
             String param = params.get(i);
@@ -59,7 +64,7 @@ public class JsFunction implements IJsType {
         if (body != null) {
             try {
                 body.exec(functionScope);
-            }catch (ReturnException e){
+            } catch (ReturnException e) {
                 return e.throwValue();
             }
             return Undefined.INSTANCE;
@@ -77,7 +82,7 @@ public class JsFunction implements IJsType {
 
     @Override
     public String toString() {
-        return name!=null ?"[function "+name+"]" : "[function]";
+        return name != null ? "[function " + name + "]" : "[function]";
     }
 
     @Override

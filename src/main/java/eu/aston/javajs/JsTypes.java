@@ -11,11 +11,11 @@ public class JsTypes {
             case null -> false;
             case Boolean b -> b;
             case String s -> !s.isEmpty();
-            case Integer number -> number!=0;
-            case Long number -> number!=0L;
-            case Double number -> !number.isNaN() && number!=0.0;
+            case Integer number -> number != 0;
+            case Long number -> number != 0L;
+            case Double number -> !number.isNaN() && number != 0.0;
             case List<?> l -> !l.isEmpty();
-            case Map<?,?> m -> !m.isEmpty();
+            case Map<?, ?> m -> !m.isEmpty();
             case IJsType t -> t.toBoolean();
             default -> false;
         };
@@ -41,7 +41,7 @@ public class JsTypes {
         if (s.equals("Infinity")) {
             return Double.POSITIVE_INFINITY;
         }
-        if(s.matches("0[xX][0-9a-fA-F]+")) {
+        if (s.matches("0[xX][0-9a-fA-F]+")) {
             return Integer.parseInt(s.substring(2), 16);
         }
         if (s.matches("\\d+")) {
@@ -70,8 +70,10 @@ public class JsTypes {
     }
 
     public static Object unaryMinus(Object value) {
-        if(value instanceof String) value = toNumberString((String) value);
-        return switch (value){
+        if (value instanceof String) {
+            value = toNumberString((String) value);
+        }
+        return switch (value) {
             case null -> 0;
             case Integer i -> -i;
             case Long l -> -l;
@@ -98,19 +100,18 @@ public class JsTypes {
         if (str == null || str.isEmpty()) {
             return "";
         }
-        
+
         // Remove surrounding quotes if present
-        if ((str.startsWith("\"") && str.endsWith("\"")) || 
-            (str.startsWith("'") && str.endsWith("'"))) {
+        if ((str.startsWith("\"") && str.endsWith("\"")) || (str.startsWith("'") && str.endsWith("'"))) {
             str = str.substring(1, str.length() - 1);
         }
-        
+
         StringBuilder result = new StringBuilder();
         boolean escapeActive = false;
-        
+
         for (int i = 0; i < str.length(); i++) {
             char c = str.charAt(i);
-            
+
             if (escapeActive) {
                 switch (c) {
                     case 'n' -> result.append('\n');
@@ -147,12 +148,12 @@ public class JsTypes {
                 result.append(c);
             }
         }
-        
+
         // If the string ends with a single backslash
         if (escapeActive) {
             result.append('\\');
         }
-        
+
         return result.toString();
     }
 }

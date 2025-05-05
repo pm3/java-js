@@ -4,7 +4,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import eu.aston.javajs.AstNodes.*;
+import eu.aston.javajs.AstNodes.ASTNode;
 
 public class ManualTestAll {
 
@@ -20,49 +20,52 @@ public class ManualTestAll {
     }
 
     private static void scanDir(File dir, String filter) {
-        for(File f : dir.listFiles()){
-            if(f.isFile() && f.getName().endsWith(".js")){
-                if(filter != null && !f.getName().contains(filter)){
+        for (File f : dir.listFiles()) {
+            if (f.isFile() && f.getName().endsWith(".js")) {
+                if (filter != null && !f.getName().contains(filter)) {
                     continue;
                 }
-                try{
+                try {
                     System.out.println("Executing: " + f.getAbsolutePath());
                     String script = java.nio.file.Files.readString(f.toPath());
-                    String script2  = """
-                    function assert(ok, message){
-                        if(ok){
-                            print("ok " + message);
-                        } else{
-                            print("!!!!!!!!!!!!!! Assertion failed: " + message);
-                        }
-                    }
-                    function assertError(fn, message){
-                        try{
-                            fn();
-                            print("!!!!!!!!!!!!!! Expected an error but none was thrown: "+message);
-                        }catch(e){
-                            print("ok - thrown as expected: "+message+" - "+e);
-                        }
-                    }
-
-
-                    """;
+                    String script2 = """
+                                     function assert(ok, message){
+                                         if(ok){
+                                             print("ok " + message);
+                                         } else{
+                                             print("!!!!!!!!!!!!!! Assertion failed: " + message);
+                                         }
+                                     }
+                                     function assertError(fn, message){
+                                         try{
+                                             fn();
+                                             print("!!!!!!!!!!!!!! Expected an error but none was thrown: "+message);
+                                         }catch(e){
+                                             print("ok - thrown as expected: "+message+" - "+e);
+                                         }
+                                     }
+                                     
+                                     
+                                     """;
                     Scope rootScope = JsSdk.createRootScope();
-                    rootScope.nativeFunction("print()", (scope, args)-> {System.out.println(args); return null; });
+                    rootScope.nativeFunction("print()", (scope, args) -> {
+                        System.out.println(args);
+                        return null;
+                    });
                     rootScope.nativeFunction("Error(val)", (scope, args) -> JsTypes.toString(args.getFirst()));
-                    JsLexer lexer = new JsLexer(script+script2);
+                    JsLexer lexer = new JsLexer(script + script2);
                     JsParser parser = new JsParser(lexer.tokenize());
                     ASTNode root = parser.parse();
 
                     //JsParser.printTree(root, " ");
                     root.exec(rootScope);
 
-                }catch (Exception e){
+                } catch (Exception e) {
                     e.printStackTrace();
-                    System.out.println("!!!!!!!!!!!!!! error in script "+f.getAbsolutePath()+" "+e.getMessage());
+                    System.out.println("!!!!!!!!!!!!!! error in script " + f.getAbsolutePath() + " " + e.getMessage());
                 }
             }
-            if(f.isDirectory()){
+            if (f.isDirectory()) {
                 scanDir(f, filter);
             }
         }
@@ -72,8 +75,8 @@ public class ManualTestAll {
         StringBuilder sb = new StringBuilder();
         sb.append(indent);
         sb.append(node.getClass().getSimpleName()).append(" > ");
-        for(Field f : node.getClass().getDeclaredFields()){
-            if(f.getType().equals(String.class)){
+        for (Field f : node.getClass().getDeclaredFields()) {
+            if (f.getType().equals(String.class)) {
                 try {
                     sb.append(f.getName()).append("=").append(f.get(node)).append(" ");
                 } catch (IllegalAccessException ignore) {
@@ -81,25 +84,25 @@ public class ManualTestAll {
             }
         }
         System.out.println(sb);
-        for(Field f : node.getClass().getDeclaredFields()){
-            if(f.getType().isAssignableFrom(ASTNode.class)){
+        for (Field f : node.getClass().getDeclaredFields()) {
+            if (f.getType().isAssignableFrom(ASTNode.class)) {
                 try {
                     ASTNode child = (ASTNode) f.get(node);
-                    if(child != null){
-                        System.out.println(indent+"  "+f.getName()+":");
-                        printTree(child, indent+"    ");
+                    if (child != null) {
+                        System.out.println(indent + "  " + f.getName() + ":");
+                        printTree(child, indent + "    ");
                     }
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
                 }
             }
-            if(f.getType().isAssignableFrom(List.class)){
+            if (f.getType().isAssignableFrom(List.class)) {
                 try {
-                    if(f.get(node) instanceof List<?> list){
-                        System.out.println(indent+"  "+f.getName()+":");
-                        for(Object child : list){
-                            if(child instanceof ASTNode childNode){
-                                printTree(childNode, indent+"    ");
+                    if (f.get(node) instanceof List<?> list) {
+                        System.out.println(indent + "  " + f.getName() + ":");
+                        for (Object child : list) {
+                            if (child instanceof ASTNode childNode) {
+                                printTree(childNode, indent + "    ");
                             }
                         }
                     }
@@ -111,13 +114,13 @@ public class ManualTestAll {
 
     }
 
-    public static void runScript(String script){
+    public static void runScript(String script) {
 
         JsLexer lexer = new JsLexer(script);
         JsParser parser = new JsParser(lexer.tokenize());
         ASTNode programNode = parser.parse();
 
-        for(int i=0; i<10; i++){
+        for (int i = 0; i < 10; i++) {
             Scope rootScope = JsSdk.createRootScope();
             programNode.exec(rootScope);
         }

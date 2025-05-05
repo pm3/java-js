@@ -5,7 +5,7 @@ import java.util.List;
 
 public class JsExtra {
 
-    public static void defineDateFunctions(Scope scope){
+    public static void defineDateFunctions(Scope scope) {
         scope.nativeFunction("dateExtract(date,field)", JsExtra::dateExtract);
         scope.nativeFunction("dateFormat(date,format)", JsExtra::dateFormat);
         scope.nativeFunction("dateDiff(date,date,unit)", JsExtra::dateDiff);
@@ -13,27 +13,27 @@ public class JsExtra {
         scope.nativeFunction("now()", JsExtra::now);
     }
 
-    public static LocalDateTime toLocalDateTime(Object val){
+    public static LocalDateTime toLocalDateTime(Object val) {
         return null;
     }
 
-    public static Object dateExtract(Scope scope, List<Object> args){
+    public static Object dateExtract(Scope scope, List<Object> args) {
         return null;
     }
 
-    public static Object dateFormat(Scope scope, List<Object> args){
+    public static Object dateFormat(Scope scope, List<Object> args) {
         return null;
     }
 
-    public static Object dateDiff(Scope scope, List<Object> args){
+    public static Object dateDiff(Scope scope, List<Object> args) {
         return null;
     }
 
-    public static Object dateAdd(Scope scope, List<Object> args){
+    public static Object dateAdd(Scope scope, List<Object> args) {
         return null;
     }
 
-    public static Object now(Scope scope, List<Object> args){
+    public static Object now(Scope scope, List<Object> args) {
         return null;
     }
 }

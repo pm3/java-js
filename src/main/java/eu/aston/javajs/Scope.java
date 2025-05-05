@@ -51,15 +51,15 @@ public class Scope implements IJsType, AutoCloseable {
     }
 
     public void defineLocalVar(boolean constant, String identifier, Object value) {
-        if(variables.containsKey(identifier)){
-            throw new RuntimeException("Variable "+identifier+" already defined");
+        if (variables.containsKey(identifier)) {
+            throw new RuntimeException("Variable " + identifier + " already defined");
         }
         variables.put(identifier, new VarAccess(constant, value, level));
     }
 
-    public void defineVar(String identifier, Object value){
-        if(variables.containsKey(identifier)){
-            throw new RuntimeException("Variable "+identifier+" already defined");
+    public void defineVar(String identifier, Object value) {
+        if (variables.containsKey(identifier)) {
+            throw new RuntimeException("Variable " + identifier + " already defined");
         }
         variables.put(identifier, new VarAccess(false, value, 0));
     }
@@ -79,8 +79,8 @@ public class Scope implements IJsType, AutoCloseable {
     public void nativeFunction(String name, BiFunction<Scope, List<Object>, Object> nativeFunction) {
         int pos1 = name.indexOf("(");
         int pos2 = name.indexOf(")");
-        String functionName = pos1>0 ? name.substring(0, pos1) : name;
-        List<String> params = pos1>0 && pos2>pos1 ? List.of(name.substring(pos1+1, pos2).split(",")) : List.of();
+        String functionName = pos1 > 0 ? name.substring(0, pos1) : name;
+        List<String> params = pos1 > 0 && pos2 > pos1 ? List.of(name.substring(pos1 + 1, pos2).split(",")) : List.of();
         JsFunction function = new JsFunction(functionName, params, nativeFunction);
         variables.put(functionName, new VarAccess(true, function, 0));
     }
@@ -91,12 +91,12 @@ public class Scope implements IJsType, AutoCloseable {
     }
 
     public Scope newFunctionBlock(boolean usedLocalScope, Object parent) {
-        if(usedLocalScope){
+        if (usedLocalScope) {
             this.level++;
             return this;
         }
         Scope newScope = new Scope(this);
-        if(parent!=null){
+        if (parent != null) {
             newScope.putVariable("this", parent);
         }
         return newScope;
@@ -104,7 +104,7 @@ public class Scope implements IJsType, AutoCloseable {
 
     @Override
     public void close() {
-        if(level>0){
+        if (level > 0) {
             variables.entrySet().removeIf(entry -> entry.getValue().level >= level);
             level--;
         }
@@ -114,6 +114,7 @@ public class Scope implements IJsType, AutoCloseable {
     public boolean toBoolean() {
         return true;
     }
+
     @Override
     public String toString() {
         return "[object]";
