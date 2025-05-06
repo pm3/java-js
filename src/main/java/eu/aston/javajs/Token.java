@@ -46,7 +46,7 @@ public class Token {
         return subtokens;
     }
 
-    public TokenPos tokenPos(){
+    public TokenPos tokenPos() {
         return new TokenPos(line, column);
     }
 

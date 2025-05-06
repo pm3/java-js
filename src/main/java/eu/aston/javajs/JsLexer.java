@@ -11,7 +11,7 @@ public class JsLexer {
     private static final Map<String, TokenType> RESERVED_WORDS = new HashMap<>();
 
     static {
-        String[] keywords = {"break", "case", "catch", "continue", "const", "default", "do", "else", "finally", "for", "function", "if", "in", "let", "of", "return", "switch", "this", "throw", "try", "typeof", "var", "while"};
+        String[] keywords = {"break", "case", "catch", "continue", "const", "default", "do", "else", "finally", "for", "function", "if", "in", "let", "of", "return", "switch", "this", "throw", "try", "typeof", "while"};
 
         for (String keyword : keywords) {
             RESERVED_WORDS.put(keyword, TokenType.KEYWORD);

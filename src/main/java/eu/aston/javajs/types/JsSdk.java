@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -67,7 +66,7 @@ public class JsSdk {
         scope.nativeFunction("String.trimStart()", parentTypeFunction(String.class, JsSdk::string_trimStart));
 
         // Array static methods
-        scope.putVariable("Array", Map.of("isArray", new JsFunction("isArray", List.of("val"), JsSdk::array_isArray)));
+        scope.setValue("Array", Map.of("isArray", JsFunction.nativeFunction("isArray(val)", JsSdk::array_isArray)));
         // Array prototype methods
         scope.nativeFunction("Array.concat(arrays)", parentTypeFunction(List.class, JsSdk::array_concat));
         scope.nativeFunction("Array.copyWithin(target,start,end)",
@@ -110,18 +109,18 @@ public class JsSdk {
                              parentTypeFunction(JsFunction.class, JsSdk::function_apply));
         scope.nativeFunction("Function.call(thisArg)", parentTypeFunction(JsFunction.class, JsSdk::function_call));
 
-        scope.putVariable("Object", Map.of("isExtensible",
-                                           new JsFunction("isExtensible", List.of("val"), JsSdk::object_isExtensible),
-                                           "assign",
-                                           new JsFunction("assign", List.of("target", "sources"), JsSdk::object_assign),
-                                           "entries", new JsFunction("entries", List.of("obj"), JsSdk::object_entries),
-                                           "getOwnPropertyNames", new JsFunction("getOwnPropertyNames", List.of("obj"),
-                                                                                 JsSdk::object_getOwnPropertyNames),
-                                           "groupBy", new JsFunction("groupBy", List.of("items", "callbackFn"),
-                                                                     JsSdk::object_groupBy), "hasOwn",
-                                           new JsFunction("hasOwn", List.of("obj", "prop"), JsSdk::object_hasOwn),
-                                           "keys", new JsFunction("keys", List.of("obj"), JsSdk::object_keys), "values",
-                                           new JsFunction("values", List.of("obj"), JsSdk::object_values)));
+        scope.setValue("Object", Map.of("isExtensible",
+                                        JsFunction.nativeFunction("isExtensible(val)", JsSdk::object_isExtensible),
+                                        "assign",
+                                        JsFunction.nativeFunction("assign(target,sources)", JsSdk::object_assign),
+                                        "entries", JsFunction.nativeFunction("entries(obj)", JsSdk::object_entries),
+                                        "getOwnPropertyNames", JsFunction.nativeFunction("getOwnPropertyNames(obj)",
+                                                                                         JsSdk::object_getOwnPropertyNames),
+                                        "groupBy",
+                                        JsFunction.nativeFunction("groupBy(items,callbackFn)", JsSdk::object_groupBy),
+                                        "hasOwn", JsFunction.nativeFunction("hasOwn(obj,prop)", JsSdk::object_hasOwn),
+                                        "keys", JsFunction.nativeFunction("keys(obj)", JsSdk::object_keys), "values",
+                                        JsFunction.nativeFunction("values(obj)", JsSdk::object_values)));
 
         // Global functions
         scope.nativeFunction("parseInt(val,radix)", JsSdk::parseInt);
@@ -132,9 +131,8 @@ public class JsSdk {
         scope.nativeFunction("Number(val)", (scope2, args) -> JsTypes.toNumber(args.getFirst()));
         scope.nativeFunction("String(val)", (scope2, args) -> JsTypes.toString(args.getFirst()));
 
-        scope.putVariable("JSON",
-                          Map.of("parse", new JsFunction("parse", List.of("val"), JsSdk::json_parse), "stringify",
-                                 new JsFunction("stringify", List.of("val"), JsSdk::json_stringify)));
+        scope.setValue("JSON", Map.of("parse", JsFunction.nativeFunction("parse(val)", JsSdk::json_parse), "stringify",
+                                      JsFunction.nativeFunction("stringify(val)", JsSdk::json_stringify)));
     }
 
     // parseInt function
@@ -166,12 +164,11 @@ public class JsSdk {
         Object apply(Scope scope, List<Object> args, T parent);
     }
 
-    public static <T> BiFunction<Scope, List<Object>, Object> parentTypeFunction(Class<T> type, ScopeFunction<T> fn) {
+    public static <T> IJsFunctionExec parentTypeFunction(Class<T> type, ScopeFunction<T> fn) {
         return (scope, args) -> {
-            Scope.VarAccess thisParent = scope.getVar("this");
-            if (thisParent != null && thisParent.value() != null &&
-                    type.isAssignableFrom(thisParent.value().getClass())) {
-                return fn.apply(scope, args, (T) thisParent.value());
+            Object parent = scope.getValue(0, "this");
+            if (parent != null && type.isAssignableFrom(parent.getClass())) {
+                return fn.apply(scope, args, (T) parent);
             }
             return null;
         };
@@ -1306,7 +1303,7 @@ public class JsSdk {
         Object thisArg = args.getFirst();
         List<Object> fnArgs =
                 args.size() > 1 && args.get(1) instanceof List ? (List<Object>) args.get(1) : new ArrayList<>();
-        while (fnArgs.size() < fn.params().size()) {
+        while (fnArgs.size() < fn.params.size()) {
             fnArgs.add(Undefined.INSTANCE);
         }
         return fn.setParent(thisArg).exec(scope, fnArgs);
@@ -1316,7 +1313,7 @@ public class JsSdk {
     public static Object function_call(Scope scope, List<Object> args, JsFunction fn) {
         Object thisArg = args.isEmpty() ? null : args.getFirst();
         List<Object> fnArgs = args.size() > 1 ? args.subList(1, args.size()) : new ArrayList<>();
-        while (fnArgs.size() < fn.params().size()) {
+        while (fnArgs.size() < fn.params.size()) {
             fnArgs.add(Undefined.INSTANCE);
         }
         return fn.setParent(thisArg).exec(scope, fnArgs);

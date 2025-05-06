@@ -43,7 +43,7 @@ public class TestScripts {
             System.out.println(args);
             return null;
         });
-        runScript(rootScope, script + script2);
+        runScript(rootScope, script);
     }
 
     private void testErrorParser(String script, List<DynamicTest> tests) {
@@ -53,14 +53,12 @@ public class TestScripts {
                 continue;
             }
             String name = s.split("/n")[0];
-            tests.add(DynamicTest.dynamicTest(name, () -> {
-                Assertions.assertThrows(Exception.class, () -> {
-                    JsLexer lexer = new JsLexer(s);
-                    JsParser parser = new JsParser(lexer.tokenize());
-                    parser.parse();
-                    System.out.println("error script:\n" + s);
-                });
-            }));
+            tests.add(DynamicTest.dynamicTest(name, () -> Assertions.assertThrows(Exception.class, () -> {
+                JsLexer lexer = new JsLexer(s);
+                JsParser parser = new JsParser(lexer.tokenize());
+                parser.parse();
+                System.out.println("error script:\n" + s);
+            })));
         }
     }
 

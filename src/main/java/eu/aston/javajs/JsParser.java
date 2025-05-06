@@ -35,7 +35,6 @@ import eu.aston.javajs.AstNodes.StringConcatExpressionNode;
 import eu.aston.javajs.AstNodes.SwitchCaseNode;
 import eu.aston.javajs.AstNodes.SwitchDefaultNode;
 import eu.aston.javajs.AstNodes.SwitchStatementNode;
-import eu.aston.javajs.AstNodes.ThisNode;
 import eu.aston.javajs.AstNodes.ThrowStatementNode;
 import eu.aston.javajs.AstNodes.TryStatementNode;
 import eu.aston.javajs.AstNodes.UnaryExpressionNode;
@@ -49,10 +48,19 @@ public class JsParser {
     private Token currentToken;
     private int tokenPosition;
     private final List<Token> tokens;
+    private final VariablesAnalyzer variablesAnalyzer;
 
     public JsParser(List<Token> tokens) {
         this.tokens = tokens;
         this.tokenPosition = 0;
+        this.variablesAnalyzer = new VariablesAnalyzer();
+        advance();
+    }
+
+    public JsParser(List<Token> tokens, VariablesAnalyzer variablesAnalyzer) {
+        this.tokens = tokens;
+        this.tokenPosition = 0;
+        this.variablesAnalyzer = variablesAnalyzer;
         advance();
     }
 
@@ -109,11 +117,10 @@ public class JsParser {
 
     // Program = Statement*
     private ASTNode parseProgram() {
-        ProgramNode program = new ProgramNode();
-
+        BlockNode blockNode = new BlockNode();
         try {
             while (currentToken.getType() != TokenType.EOF) {
-                program.addStatement(parseStatement());
+                blockNode.addStatement(parseStatement());
             }
         } catch (SyntaxError e) {
             throw e;
@@ -121,8 +128,9 @@ public class JsParser {
             throw new SyntaxError(e.getMessage() + " " + " at line " + currentToken.getLine() + ", column " +
                                           currentToken.getColumn());
         }
-
-        return program;
+        variablesAnalyzer.recalc();
+        //VariablesAnalyzer.deepPrint(variablesAnalyzer.getRoot(), 0);
+        return new ProgramNode(blockNode, variablesAnalyzer.stackDef());
     }
 
     // Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement
@@ -152,7 +160,6 @@ public class JsParser {
 
             case KEYWORD:
                 switch (currentToken.getValue()) {
-                    case "var":
                     case "let":
                     case "const":
                         return parseVariableStatement();
@@ -188,29 +195,28 @@ public class JsParser {
     public BlockNode parseBlock() {
         BlockNode block = new BlockNode();
         expect(TokenType.PUNCTUATION, "{");
-
+        variablesAnalyzer.startBlock();
         while (!match(TokenType.PUNCTUATION, "}")) {
             block.addStatement(parseStatement());
         }
-
         expect(TokenType.PUNCTUATION, "}");
+        variablesAnalyzer.endBlock();
         return block;
     }
 
     private boolean variableAccess() {
         return currentToken.getType() == TokenType.KEYWORD &&
-                (currentToken.getValue().equals("var") || currentToken.getValue().equals("let") ||
-                        currentToken.getValue().equals("const"));
+                (currentToken.getValue().equals("let") || currentToken.getValue().equals("const"));
     }
 
-    // VariableStatement = ("var"|"let"|"const") VariableDeclarationList ";"
+    // VariableStatement = ("let"|"const") VariableDeclarationList ";"
     private ASTNode parseVariableStatement() {
         if (!variableAccess()) {
             throw new SyntaxError("Expected variable declaration but got " + currentToken.getType() + " at line " +
                                           currentToken.getLine() + ", column " + currentToken.getColumn());
         }
         String access = currentToken.getValue();
-        VariableStatementNode node = new VariableStatementNode(access);
+        VariableStatementNode node = new VariableStatementNode();
         advance();
 
         if (match(TokenType.PUNCTUATION, "[")) {
@@ -223,19 +229,22 @@ public class JsParser {
         }
 
         // Parse first variable declaration
-        node.addDeclaration(parseVariableDeclaration());
+        node.addDeclaration(parseVariableDeclaration(access));
 
         // Parse additional variable declarations separated by commas
         while (matchAdvance(TokenType.PUNCTUATION, ",")) {
-            node.addDeclaration(parseVariableDeclaration());
+            node.addDeclaration(parseVariableDeclaration(access));
         }
 
         expectEndStatement();
+        if (node.declarations.size() == 1) {
+            return node.declarations.getFirst();
+        }
         return node;
     }
 
     // VariableDeclaration = Identifier Initializer?
-    private VariableDeclarationNode parseVariableDeclaration() {
+    private VariableDeclarationNode parseVariableDeclaration(String access) {
         if (currentToken.getType() != TokenType.IDENTIFIER) {
             throw new SyntaxError(
                     "Expected identifier but got " + currentToken.getType() + " at line " + currentToken.getLine() +
@@ -250,17 +259,19 @@ public class JsParser {
             initializer = parseAssignmentExpression();
         }
 
-        return new VariableDeclarationNode(identifier, initializer);
+        return variablesAnalyzer.var(
+                new VariableDeclarationNode(access, identifier, initializer, currentToken.tokenPos()));
     }
 
     private ASTNode parseDestructingArray(String access) {
-        List<String> names = new ArrayList<>();
-        String restName = null;
+        List<VariableDeclarationNode> variables = new ArrayList<>();
+        VariableDeclarationNode restVariable = null;
 
         expect(TokenType.PUNCTUATION, "[");
         while (true) {
             if (currentToken.getType() == TokenType.IDENTIFIER) {
-                names.add(currentToken.getValue());
+                variables.add(variablesAnalyzer.var(
+                        new VariableDeclarationNode(access, currentToken.getValue(), currentToken.tokenPos())));
                 advance();
                 if (matchAdvance(TokenType.PUNCTUATION, ",")) {
                     continue;
@@ -273,13 +284,15 @@ public class JsParser {
                                 "'" + " at line " + currentToken.getLine() + ", column " + currentToken.getColumn());
             }
             if (currentToken.getType() == TokenType.REST_IDENTIFIER) {
-                restName = currentToken.getValue().substring(3);
+                String identifier = currentToken.getValue().substring(3);
+                restVariable = variablesAnalyzer.var(
+                        new VariableDeclarationNode(access, identifier, currentToken.tokenPos()));
                 advance();
                 expect(TokenType.PUNCTUATION, "]");
                 break;
             }
             if (matchAdvance(TokenType.PUNCTUATION, ",")) {
-                names.add("");
+                variables.add(null);
                 continue;
             }
             throw new SyntaxError(
@@ -288,17 +301,18 @@ public class JsParser {
         }
         expect(TokenType.OPERATOR, "=");
         ASTNode right = parseAssignmentExpression();
-        return new DestructuringArrayNode(access, names, restName, right);
+        return new DestructuringArrayNode(variables, restVariable, right);
     }
 
     private ASTNode parseDestructingObject(String access) {
-        List<String> names = new ArrayList<>();
-        String restName = null;
+        List<VariableDeclarationNode> variables = new ArrayList<>();
+        VariableDeclarationNode restVariable = null;
 
         expect(TokenType.PUNCTUATION, "{");
         while (true) {
             if (currentToken.getType() == TokenType.IDENTIFIER) {
-                names.add(currentToken.getValue());
+                variables.add(variablesAnalyzer.var(
+                        new VariableDeclarationNode(access, currentToken.getValue(), currentToken.tokenPos())));
                 advance();
                 if (matchAdvance(TokenType.PUNCTUATION, ",")) {
                     continue;
@@ -311,7 +325,9 @@ public class JsParser {
                                 "'" + " at line " + currentToken.getLine() + ", column " + currentToken.getColumn());
             }
             if (currentToken.getType() == TokenType.REST_IDENTIFIER) {
-                restName = currentToken.getValue().substring(3);
+                String identifier = currentToken.getValue().substring(3);
+                restVariable = variablesAnalyzer.var(
+                        new VariableDeclarationNode(access, identifier, currentToken.tokenPos()));
                 advance();
                 expect(TokenType.PUNCTUATION, "}");
                 break;
@@ -322,7 +338,7 @@ public class JsParser {
         }
         expect(TokenType.OPERATOR, "=");
         ASTNode right = parseAssignmentExpression();
-        return new DestructuringObjectNode(access, names, restName, right);
+        return new DestructuringObjectNode(variables, restVariable, right);
     }
 
     // ExpressionStatement = Expression ";"
@@ -391,8 +407,8 @@ public class JsParser {
         return new WhileStatementNode(condition, body);
     }
 
-    // ForStatement = "for" "(" (ExpressionNoIn? | "var" VariableDeclarationListNoIn) ";" Expression? ";" Expression? ")" Statement
-    //              | "for" "(" (LeftHandSideExpression | "var" VariableDeclarationNoIn) "in" Expression ")" Statement
+    // ForStatement = "for" "(" (ExpressionNoIn? | "let|const" VariableDeclarationListNoIn) ";" Expression? ";" Expression? ")" Statement
+    //              | "for" "(" (LeftHandSideExpression | "let|const" VariableDeclarationNoIn) "in" Expression ")" Statement
     private ASTNode parseForStatement() {
         expect(TokenType.KEYWORD, "for");
         expect(TokenType.PUNCTUATION, "(");
@@ -400,28 +416,32 @@ public class JsParser {
         if (variableAccess() && tokens.get(tokenPosition).getType() == TokenType.IDENTIFIER &&
                 matchPos(tokenPosition + 1, TokenType.KEYWORD, "in")) {
             // Handle for-in loop
-            //String access = currentToken.getValue();
+            String access = currentToken.getValue();
             advance();
             String identifier = currentToken.getValue();
             advance();
+            VariableDeclarationNode forVar = variablesAnalyzer.var(
+                    new VariableDeclarationNode(access, identifier, currentToken.tokenPos()));
             expect(TokenType.KEYWORD, "in");
             ASTNode iterable = parseExpression();
             expect(TokenType.PUNCTUATION, ")");
             ASTNode body = parseStatement();
-            return new ForInStatementNode(identifier, iterable, body);
+            return new ForInStatementNode(forVar, iterable, body);
         }
         if (variableAccess() && tokens.get(tokenPosition).getType() == TokenType.IDENTIFIER &&
                 matchPos(tokenPosition + 1, TokenType.KEYWORD, "of")) {
             // Handle for-of loop
-            //String access = currentToken.getValue();
+            String access = currentToken.getValue();
             advance();
             String identifier = currentToken.getValue();
             advance();
+            VariableDeclarationNode forVar = variablesAnalyzer.var(
+                    new VariableDeclarationNode(access, identifier, currentToken.tokenPos()));
             expect(TokenType.KEYWORD, "of");
             ASTNode iterable = parseExpression();
             expect(TokenType.PUNCTUATION, ")");
             ASTNode body = parseStatement();
-            return new ForOfStatementNode(identifier, iterable, body);
+            return new ForOfStatementNode(forVar, iterable, body);
         }
 
         ASTNode init = null;
@@ -429,14 +449,10 @@ public class JsParser {
         ASTNode update = null;
 
         // Check for var declaration
-        if (currentToken.getType() == TokenType.KEYWORD &&
-                (currentToken.getValue().equals("var") || currentToken.getValue().equals("let") ||
-                        currentToken.getValue().equals("const"))) {
+        if (variableAccess()) {
             String access = currentToken.getValue();
             advance();
-            init = parseVariableDeclaration();
-            VariableDeclarationNode variableDeclarationNode = (VariableDeclarationNode) init;
-            variableDeclarationNode.setAccess(access);
+            init = parseVariableDeclaration(access);
         } else if (match(TokenType.PUNCTUATION, ";")) {
             // Check for semicolon (empty initialization)
             // No initialization
@@ -510,6 +526,9 @@ public class JsParser {
                     operator.equals("/=") || operator.equals("%=")) {
                 advance();
                 ASTNode right = parseAssignmentExpression();
+                if (left instanceof IdentifierNode in) {
+                    in.wasAssigned = true;
+                }
                 return new AssignmentExpressionNode(left, operator, right);
             }
         }
@@ -676,8 +695,9 @@ public class JsParser {
         while (true) {
             if (match(TokenType.PUNCTUATION, "(")) {
                 // Function call
+                TokenPos tokenPos = currentToken.tokenPos();
                 List<ASTNode> arguments = parseArguments();
-                expression = new CallExpressionNode(expression, arguments);
+                expression = new CallExpressionNode(expression, arguments, tokenPos);
                 continue;
             }
             ASTNode next = parseNextMember(expression);
@@ -695,18 +715,19 @@ public class JsParser {
             if (currentToken.getType() == TokenType.IDENTIFIER) {
                 String property = currentToken.getValue();
                 advance();
-                return new MemberExpressionNode(new OptionalNode(parent), property);
+                return new MemberExpressionNode(new OptionalNode(parent), property, currentToken.tokenPos());
             }
             if (matchAdvance(TokenType.PUNCTUATION, "[")) {
                 // Indexed access
                 ASTNode property = parseExpression();
                 expect(TokenType.PUNCTUATION, "]");
-                return new OptionalNode(new MemberExpressionNode(parent, property));
+                return new OptionalNode(new MemberExpressionNode(parent, property, currentToken.tokenPos()));
             }
             if (match(TokenType.PUNCTUATION, "(")) {
                 // Function call
+                TokenPos tokenPos = currentToken.tokenPos();
                 List<ASTNode> arguments = parseArguments();
-                return new CallExpressionNode(new OptionalNode(parent), arguments);
+                return new CallExpressionNode(new OptionalNode(parent), arguments, tokenPos);
             }
             throw new SyntaxError("Expected identifier after '?.' but got " + currentToken.getType() + " at line " +
                                           currentToken.getLine() + ", column " + currentToken.getColumn());
@@ -718,12 +739,12 @@ public class JsParser {
             }
             String property = currentToken.getValue();
             advance();
-            return new MemberExpressionNode(parent, property);
+            return new MemberExpressionNode(parent, property, currentToken.tokenPos());
         } else if (matchAdvance(TokenType.PUNCTUATION, "[")) {
             // Indexed access
             ASTNode property = parseExpression();
             expect(TokenType.PUNCTUATION, "]");
-            return new MemberExpressionNode(parent, property);
+            return new MemberExpressionNode(parent, property, currentToken.tokenPos());
         }
         return null;
     }
@@ -796,7 +817,7 @@ public class JsParser {
             case KEYWORD:
                 if (currentToken.getValue().equals("this")) {
                     advance();
-                    return new ThisNode();
+                    return variablesAnalyzer.var(new IdentifierNode("this", currentToken.tokenPos()));
                 } else if (currentToken.getValue().equals("function")) {
                     // Function expression (anonymous function)
                     return parseFunctionExpression(false);
@@ -806,7 +827,7 @@ public class JsParser {
             case IDENTIFIER:
                 String identifier = currentToken.getValue();
                 advance();
-                return new IdentifierNode(identifier);
+                return variablesAnalyzer.var(new IdentifierNode(identifier, currentToken.tokenPos()));
 
             case NUMBER:
             case STRING:
@@ -903,7 +924,7 @@ public class JsParser {
     }
 
     // CaseClause = "case" Expression ":" StatementList?
-    private ASTNode parseCaseClause() {
+    private SwitchCaseNode parseCaseClause() {
         expect(TokenType.KEYWORD, "case");
         ASTNode test = parseExpression();
         expect(TokenType.PUNCTUATION, ":");
@@ -938,10 +959,11 @@ public class JsParser {
     // ThrowStatement = "throw" Expression ";"
     private ASTNode parseThrowStatement() {
         expect(TokenType.KEYWORD, "throw");
+        TokenPos tokenPos = currentToken.tokenPos();
         ASTNode expression = parseExpression();
 
         expectEndStatement();
-        return new ThrowStatementNode(expression);
+        return new ThrowStatementNode(expression, tokenPos);
     }
 
     // TryStatement = "try" Block Catch Finally | "try" Block (Catch | Finally)
@@ -956,19 +978,20 @@ public class JsParser {
         // Check for catch block
         if (matchAdvance(TokenType.KEYWORD, "catch")) {
 
-            String param = null;
+            VariableDeclarationNode errVar = null;
             if (matchAdvance(TokenType.PUNCTUATION, "(")) {
 
                 if (currentToken.getType() != TokenType.IDENTIFIER) {
                     throw new SyntaxError("Expected identifier but got " + currentToken.getType() + " at line " +
                                                   currentToken.getLine() + ", column " + currentToken.getColumn());
                 }
-                param = currentToken.getValue();
+                errVar = variablesAnalyzer.var(
+                        new VariableDeclarationNode("let", currentToken.getValue(), currentToken.tokenPos()));
                 advance();
                 expect(TokenType.PUNCTUATION, ")");
             }
             ASTNode catchBody = parseBlock();
-            catchBlock = new CatchClauseNode(param, catchBody);
+            catchBlock = new CatchClauseNode(errVar, catchBody);
         }
 
         // Check for finally block
@@ -1051,7 +1074,7 @@ public class JsParser {
     private PropertyNode parsePropertyAssignment() {
         String key = parsePropertyName();
         if (match(TokenType.PUNCTUATION, ",") || match(TokenType.PUNCTUATION, "}")) {
-            return new PropertyNode(key, new IdentifierNode(key));
+            return new PropertyNode(key, variablesAnalyzer.var(new IdentifierNode(key, currentToken.tokenPos())));
         }
         expect(TokenType.PUNCTUATION, ":");
         ASTNode value = parseAssignmentExpression();
@@ -1076,7 +1099,6 @@ public class JsParser {
     // FunctionExpression = "function" Identifier? "(" FormalParameterList? ")" Block
     private ASTNode parseFunctionExpression(boolean requiredName) {
         expect(TokenType.KEYWORD, "function");
-
         String name = null;
         if (currentToken.getType() == TokenType.IDENTIFIER) {
             name = currentToken.getValue();
@@ -1086,35 +1108,15 @@ public class JsParser {
                     "Expected function name in function expression at line " + currentToken.getLine() + ", column " +
                             currentToken.getColumn());
         }
-
-        expect(TokenType.PUNCTUATION, "(");
-
-        List<String> params = new ArrayList<>();
-        while (currentToken.getType() == TokenType.IDENTIFIER) {
-            String paramName = currentToken.getValue();
-            params.add(paramName);
-            advance();
-            if (match(TokenType.PUNCTUATION, ",")) {
-                advance(); // Skip comma
-            } else {
-                break; // No more parameters
-            }
-        }
-        expect(TokenType.PUNCTUATION, ")");
-        ASTNode body = parseBlock();
-
-        return new FunctionDeclarationNode(name, params, body, false);
-    }
-
-    // Parse arrow expression - (param1, param2, ...) => expression | block
-    private ASTNode parseArrowFunction() {
-        List<String> params = new ArrayList<>();
-
-        // Check for parameter syntax
-        if (matchAdvance(TokenType.PUNCTUATION, "(")) {
-
+        try {
+            variablesAnalyzer.startFunction(name, currentToken.tokenPos());
+            expect(TokenType.PUNCTUATION, "(");
+            TokenPos tokenPos = currentToken.tokenPos();
+            List<String> params = new ArrayList<>();
             while (currentToken.getType() == TokenType.IDENTIFIER) {
-                params.add(currentToken.getValue());
+                String paramName = currentToken.getValue();
+                params.add(paramName);
+                variablesAnalyzer.param(paramName, currentToken.tokenPos());
                 advance();
                 if (match(TokenType.PUNCTUATION, ",")) {
                     advance(); // Skip comma
@@ -1122,32 +1124,63 @@ public class JsParser {
                     break; // No more parameters
                 }
             }
-            // Check for closing parenthesis
             expect(TokenType.PUNCTUATION, ")");
-        } else if (currentToken.getType() == TokenType.IDENTIFIER) {
-            // Single parameter without parentheses: x => ...
-            params.add(currentToken.getValue());
-            advance();
-        } else {
-            throw new SyntaxError(
-                    "Expected parameter list for lambda function but got " + currentToken.getType() + " at line " +
-                            currentToken.getLine() + ", column " + currentToken.getColumn());
+            ASTNode body = parseBlock();
+            return variablesAnalyzer.var(
+                    new FunctionDeclarationNode(name, tokenPos, params, body, variablesAnalyzer.stackDef(), false));
+        } finally {
+            variablesAnalyzer.endFunction();
         }
+    }
 
-        expect(TokenType.OPERATOR, "=>");
-        ASTNode body;
+    // Parse arrow expression - (param1, param2, ...) => expression | block
+    private ASTNode parseArrowFunction() {
+        try {
+            variablesAnalyzer.startFunction(null, currentToken.tokenPos());
+            List<String> params = new ArrayList<>();
+            TokenPos tokenPos = currentToken.tokenPos();
 
-        // Parse the function body
-        if (match(TokenType.PUNCTUATION, "{")) {
-            // Block body
-            body = parseBlock();
-        } else {
-            // Expression body with implicit return
-            body = parseAssignmentExpression();
-            body = new ReturnStatementNode(body);
+            // Check for parameter syntax
+            if (matchAdvance(TokenType.PUNCTUATION, "(")) {
+
+                while (currentToken.getType() == TokenType.IDENTIFIER) {
+                    params.add(currentToken.getValue());
+                    variablesAnalyzer.param(currentToken.getValue(), currentToken.tokenPos());
+                    advance();
+                    if (match(TokenType.PUNCTUATION, ",")) {
+                        advance(); // Skip comma
+                    } else {
+                        break; // No more parameters
+                    }
+                }
+                // Check for closing parenthesis
+                expect(TokenType.PUNCTUATION, ")");
+            } else if (currentToken.getType() == TokenType.IDENTIFIER) {
+                // Single parameter without parentheses: x => ...
+                params.add(currentToken.getValue());
+                variablesAnalyzer.param(currentToken.getValue(), currentToken.tokenPos());
+                advance();
+            } else {
+                throw new SyntaxError(
+                        "Expected parameter list for lambda function but got " + currentToken.getType() + " at line " +
+                                currentToken.getLine() + ", column " + currentToken.getColumn());
+            }
+            expect(TokenType.OPERATOR, "=>");
+            ASTNode body;
+            // Parse the function body
+            if (match(TokenType.PUNCTUATION, "{")) {
+                // Block body
+                body = parseBlock();
+            } else {
+                // Expression body with implicit return
+                body = parseAssignmentExpression();
+                body = new ReturnStatementNode(body);
+            }
+            return variablesAnalyzer.var(
+                    new FunctionDeclarationNode(null, tokenPos, params, body, variablesAnalyzer.stackDef(), true));
+        } finally {
+            variablesAnalyzer.endFunction();
         }
-
-        return new FunctionDeclarationNode(null, params, body, true);
     }
 
     public List<ASTNode> checkStringConcat(BinaryExpressionNode node) {
@@ -1174,12 +1207,12 @@ public class JsParser {
                 }
                 if (tokenStr.startsWith("${")) {
                     JsLexer lexer = new JsLexer(tokenStr.substring(1), subtoken.getLine(), subtoken.getColumn());
-                    JsParser parser = new JsParser(lexer.tokenize());
+                    JsParser parser = new JsParser(lexer.tokenize(), variablesAnalyzer);
                     BlockNode block = parser.parseBlock();
                     if (block.statements.size() == 1 && block.statements.getFirst() instanceof ExecuteWithReturn) {
                         items.add(block.statements.getFirst());
                     } else {
-                        throw new RuntimeException("string template invalid expression " + subtoken);
+                        throw new SyntaxError("string template invalid expression " + subtoken);
                     }
                 } else {
                     items.add(new ConstantNode(tokenStr));

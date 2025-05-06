@@ -53,15 +53,29 @@ public class AstNodes {
     // block nodes
 
     public static class ProgramNode extends BlockNode {
+        public final BlockNode blockNode;
+        public final Scope.ScopeDef scopeDef;
+
+        public ProgramNode(BlockNode blockNode, Scope.ScopeDef scopeDef) {
+            this.blockNode = blockNode;
+            this.scopeDef = scopeDef;
+        }
+
+        @Override
+        public Object exec(Scope scope) {
+            Scope newScope = new Scope(scope, scopeDef.size());
+            return blockNode.exec(newScope);
+        }
     }
 
     public static class BlockNode extends ASTNode {
-        protected List<ASTNode> statements = new ArrayList<>();
-        protected List<JsFunction> functions = new ArrayList<>();
+        public final List<ASTNode> statements = new ArrayList<>();
+        public final List<FunctionDeclarationNode> functions = new ArrayList<>();
 
         public void addStatement(ASTNode statement) {
-            if (statement instanceof FunctionDeclarationNode functionDeclarationNode) {
-                functions.add(functionDeclarationNode.function);
+            if (statement instanceof FunctionDeclarationNode functionDeclarationNode &&
+                    functionDeclarationNode.name != null) {
+                functions.add(functionDeclarationNode);
             } else {
                 statements.add(statement);
             }
@@ -69,13 +83,11 @@ public class AstNodes {
 
         @Override
         public Object exec(Scope scope) {
-            try (Scope blockScope = scope.newBlock()) {
-                for (JsFunction function : functions) {
-                    blockScope.putVariable(function.name(), function);
-                }
-                for (ASTNode statement : statements) {
-                    wrapOptionalNotFound(statement, blockScope);
-                }
+            for (FunctionDeclarationNode functionNode : functions) {
+                scope.setStackValue(functionNode.index, functionNode.name, functionNode.function.initScope(scope));
+            }
+            for (ASTNode statement : statements) {
+                wrapOptionalNotFound(statement, scope);
             }
             return null;
         }
@@ -87,15 +99,9 @@ public class AstNodes {
     // variable nodes
 
     public static class VariableStatementNode extends ASTNode {
-        protected String access;
-        protected List<VariableDeclarationNode> declarations = new ArrayList<>();
-
-        public VariableStatementNode(String access) {
-            this.access = access;
-        }
+        public final List<VariableDeclarationNode> declarations = new ArrayList<>();
 
         public void addDeclaration(VariableDeclarationNode declaration) {
-            declaration.setAccess(access);
             declarations.add(declaration);
         }
 
@@ -109,47 +115,47 @@ public class AstNodes {
     }
 
     public static class VariableDeclarationNode extends ASTNode implements ExecuteWithReturn {
-        protected String identifier;
-        protected ASTNode initializer;
-        protected String access = "let";
+        public final String access;
+        public final String identifier;
+        public final ASTNode initializer;
+        public final TokenPos tokenPos;
+        public int index = -1;
 
-        public VariableDeclarationNode(String identifier, ASTNode initializer) {
+        public VariableDeclarationNode(String access, String identifier, TokenPos tokenPos) {
+            this.access = access;
             this.identifier = identifier;
-            this.initializer = initializer;
+            this.initializer = null;
+            this.tokenPos = tokenPos;
         }
 
-        public void setAccess(String access) {
+        public VariableDeclarationNode(String access, String identifier, ASTNode initializer, TokenPos tokenPos) {
             this.access = access;
+            this.identifier = identifier;
+            this.initializer = initializer;
+            this.tokenPos = tokenPos;
         }
 
         @Override
         public Object exec(Scope scope) {
             Object value = initializer != null ? wrapOptionalNotFound(initializer, scope) : Undefined.INSTANCE;
-            defineVariable(scope, access, identifier, value);
+            setValue(scope, value);
             return value;
         }
-    }
 
-    private static void defineVariable(Scope scope, String access, String identifier, Object value) {
-        switch (access) {
-            case null -> scope.putVariable(identifier, value);
-            case "var" -> scope.defineVar(identifier, value);
-            case "let" -> scope.defineLocalVar(false, identifier, value);
-            case "const" -> scope.defineLocalVar(true, identifier, value);
-            default -> throw new RuntimeException("Invalid variable type: " + access);
+        public void setValue(Scope scope, Object value) {
+            scope.setStackValue(index, identifier, value);
         }
     }
 
     public static class DestructuringArrayNode extends ASTNode {
-        protected String access;
-        protected List<String> names;
-        protected String restName;
-        protected ASTNode right;
+        public final List<VariableDeclarationNode> variables;
+        public final VariableDeclarationNode restVariable;
+        public final ASTNode right;
 
-        public DestructuringArrayNode(String access, List<String> names, String restName, ASTNode right) {
-            this.access = access;
-            this.names = names;
-            this.restName = restName;
+        public DestructuringArrayNode(List<VariableDeclarationNode> variables, VariableDeclarationNode restVariable,
+                                      ASTNode right) {
+            this.variables = variables;
+            this.restVariable = restVariable;
             this.right = right;
         }
 
@@ -157,25 +163,26 @@ public class AstNodes {
         public Object exec(Scope scope) {
             Object rightValue = wrapOptionalNotFound(right, scope);
             if (rightValue instanceof List<?> l) {
-                for (int i = 0; i < names.size(); i++) {
-                    String name = names.get(i);
-                    if (!name.isEmpty()) {
+                for (int i = 0; i < variables.size(); i++) {
+                    VariableDeclarationNode v = variables.get(i);
+                    if (v != null) {
                         Object value = i < l.size() ? l.get(i) : Undefined.INSTANCE;
-                        defineVariable(scope, access, name, value);
+                        v.setValue(scope, value);
                     }
                 }
-                if (restName != null) {
-                    Object value = names.size() < l.size() ? l.subList(names.size(), l.size()) : Undefined.INSTANCE;
-                    defineVariable(scope, access, restName, value);
+                if (restVariable != null) {
+                    Object value =
+                            variables.size() < l.size() ? l.subList(variables.size(), l.size()) : Undefined.INSTANCE;
+                    restVariable.setValue(scope, value);
                 }
             } else {
-                for (String name : names) {
-                    if (!name.isEmpty()) {
-                        defineVariable(scope, access, name, Undefined.INSTANCE);
+                for (VariableDeclarationNode v : variables) {
+                    if (v != null) {
+                        v.setValue(scope, Undefined.INSTANCE);
                     }
                 }
-                if (restName != null) {
-                    defineVariable(scope, access, restName, Undefined.INSTANCE);
+                if (restVariable != null) {
+                    restVariable.setValue(scope, Undefined.INSTANCE);
                 }
             }
             return null;
@@ -183,16 +190,17 @@ public class AstNodes {
     }
 
     public static class DestructuringObjectNode extends ASTNode {
-        protected String access;
-        protected List<String> names;
-        protected String restName;
-        protected ASTNode right;
+        public final List<VariableDeclarationNode> variables;
+        public final VariableDeclarationNode restVariable;
+        public final ASTNode right;
+        private final List<String> names;
 
-        public DestructuringObjectNode(String access, List<String> names, String restName, ASTNode right) {
-            this.access = access;
-            this.names = names;
-            this.restName = restName;
+        public DestructuringObjectNode(List<VariableDeclarationNode> variables, VariableDeclarationNode restVariable,
+                                       ASTNode right) {
+            this.variables = variables;
+            this.restVariable = restVariable;
             this.right = right;
+            this.names = variables.stream().map(v -> v.identifier).toList();
         }
 
         @SuppressWarnings("unchecked")
@@ -201,25 +209,25 @@ public class AstNodes {
             Object rightValue = wrapOptionalNotFound(right, scope);
             if (rightValue instanceof Map) {
                 Map<String, Object> map = (Map<String, Object>) rightValue;
-                for (String n : names) {
-                    Object value = map.getOrDefault(n, Undefined.INSTANCE);
-                    defineVariable(scope, access, n, value);
+                for (VariableDeclarationNode v : variables) {
+                    Object value = map.getOrDefault(v.identifier, Undefined.INSTANCE);
+                    v.setValue(scope, value);
                 }
-                if (restName != null) {
+                if (restVariable != null) {
                     Map<String, Object> restMap = new HashMap<>();
                     for (Map.Entry<String, Object> e : map.entrySet()) {
                         if (!names.contains(e.getKey())) {
                             restMap.put(e.getKey(), e.getValue());
                         }
                     }
-                    defineVariable(scope, access, restName, restMap);
+                    restVariable.setValue(scope, restMap);
                 }
             } else {
-                for (String name : names) {
-                    defineVariable(scope, access, name, Undefined.INSTANCE);
+                for (VariableDeclarationNode v : variables) {
+                    v.setValue(scope, Undefined.INSTANCE);
                 }
-                if (restName != null) {
-                    defineVariable(scope, access, restName, Undefined.INSTANCE);
+                if (restVariable != null) {
+                    restVariable.setValue(scope, Undefined.INSTANCE);
                 }
             }
             return null;
@@ -229,9 +237,9 @@ public class AstNodes {
     // control flow nodes
 
     public static class IfStatementNode extends ASTNode {
-        protected ASTNode condition;
-        protected ASTNode thenStatement;
-        protected ASTNode elseStatement;
+        public final ASTNode condition;
+        public final ASTNode thenStatement;
+        public final ASTNode elseStatement;
 
         public IfStatementNode(ASTNode condition, ASTNode thenStatement, ASTNode elseStatement) {
             this.condition = condition;
@@ -252,8 +260,8 @@ public class AstNodes {
     }
 
     public static class WhileStatementNode extends ASTNode {
-        protected ASTNode condition;
-        protected ASTNode body;
+        public final ASTNode condition;
+        public final ASTNode body;
 
         public WhileStatementNode(ASTNode condition, ASTNode body) {
             this.condition = condition;
@@ -263,18 +271,16 @@ public class AstNodes {
         @Override
         public Object exec(Scope scope) {
             int step = 0;
-            try (Scope blockScope = scope.newBlock()) {
-                while (true) {
-                    Object conditionValue = wrapOptionalNotFound(condition, scope);
-                    if (!JsTypes.toBoolean(conditionValue)) {
-                        break;
-                    }
-                    if (wrapBreakBlock(body, blockScope)) {
-                        break;
-                    }
-                    if (step++ > INFINITE_LOOP_LIMIT) {
-                        throw new RuntimeException("Infinite loop detected - while statement");
-                    }
+            while (true) {
+                Object conditionValue = wrapOptionalNotFound(condition, scope);
+                if (!JsTypes.toBoolean(conditionValue)) {
+                    break;
+                }
+                if (wrapBreakBlock(body, scope)) {
+                    break;
+                }
+                if (step++ > INFINITE_LOOP_LIMIT) {
+                    throw new RuntimeException("Infinite loop detected - while statement");
                 }
             }
             return null;
@@ -282,8 +288,8 @@ public class AstNodes {
     }
 
     public static class DoWhileStatementNode extends ASTNode {
-        protected ASTNode condition;
-        protected ASTNode body;
+        public final ASTNode condition;
+        public final ASTNode body;
 
         public DoWhileStatementNode(ASTNode condition, ASTNode body) {
             this.condition = condition;
@@ -293,18 +299,16 @@ public class AstNodes {
         @Override
         public Object exec(Scope scope) {
             int step = 0;
-            try (Scope blockScope = scope.newBlock()) {
-                while (true) {
-                    if (wrapBreakBlock(body, blockScope)) {
-                        break;
-                    }
-                    Object conditionValue = wrapOptionalNotFound(condition, scope);
-                    if (!JsTypes.toBoolean(conditionValue)) {
-                        break;
-                    }
-                    if (step++ > INFINITE_LOOP_LIMIT) {
-                        throw new RuntimeException("Infinite loop detected - while statement");
-                    }
+            while (true) {
+                if (wrapBreakBlock(body, scope)) {
+                    break;
+                }
+                Object conditionValue = wrapOptionalNotFound(condition, scope);
+                if (!JsTypes.toBoolean(conditionValue)) {
+                    break;
+                }
+                if (step++ > INFINITE_LOOP_LIMIT) {
+                    throw new RuntimeException("Infinite loop detected - while statement");
                 }
             }
             return null;
@@ -312,10 +316,10 @@ public class AstNodes {
     }
 
     public static class ForStatementNode extends ASTNode {
-        protected ASTNode initialization;
-        protected ASTNode condition;
-        protected ASTNode update;
-        protected ASTNode body;
+        public final ASTNode initialization;
+        public final ASTNode condition;
+        public final ASTNode update;
+        public final ASTNode body;
 
         public ForStatementNode(ASTNode initialization, ASTNode condition, ASTNode update, ASTNode body) {
             this.initialization = initialization;
@@ -327,24 +331,22 @@ public class AstNodes {
         @Override
         public Object exec(Scope scope) {
             int step = 0;
-            try (Scope blockScope = scope.newBlock()) {
-                if (initialization != null) {
-                    wrapOptionalNotFound(initialization, scope);
+            if (initialization != null) {
+                wrapOptionalNotFound(initialization, scope);
+            }
+            while (true) {
+                Object conditionValue = wrapOptionalNotFound(condition, scope);
+                if (!JsTypes.toBoolean(conditionValue)) {
+                    break;
                 }
-                while (true) {
-                    Object conditionValue = wrapOptionalNotFound(condition, scope);
-                    if (!JsTypes.toBoolean(conditionValue)) {
-                        break;
-                    }
-                    if (wrapBreakBlock(body, blockScope)) {
-                        break;
-                    }
-                    if (update != null) {
-                        wrapOptionalNotFound(update, scope);
-                    }
-                    if (step++ > INFINITE_LOOP_LIMIT) {
-                        throw new RuntimeException("Infinite loop detected - for statement");
-                    }
+                if (wrapBreakBlock(body, scope)) {
+                    break;
+                }
+                if (update != null) {
+                    wrapOptionalNotFound(update, scope);
+                }
+                if (step++ > INFINITE_LOOP_LIMIT) {
+                    throw new RuntimeException("Infinite loop detected - for statement");
                 }
             }
             return null;
@@ -352,11 +354,11 @@ public class AstNodes {
     }
 
     public static class ForInStatementNode extends ASTNode {
-        protected String variableName;
-        protected ASTNode expression;
-        protected ASTNode body;
+        public final VariableDeclarationNode variableName;
+        public final ASTNode expression;
+        public final ASTNode body;
 
-        public ForInStatementNode(String variableName, ASTNode expression, ASTNode body) {
+        public ForInStatementNode(VariableDeclarationNode variableName, ASTNode expression, ASTNode body) {
             this.variableName = variableName;
             this.expression = expression;
             this.body = body;
@@ -367,28 +369,24 @@ public class AstNodes {
             Object value = wrapOptionalNotFound(expression, scope);
             if (value instanceof Map map) {
                 int step = 0;
-                try (Scope blockScope = scope.newBlock()) {
-                    for (Object key : map.keySet()) {
-                        blockScope.putVariable(variableName, key);
-                        if (wrapBreakBlock(body, blockScope)) {
-                            break;
-                        }
-                        if (step++ > INFINITE_LOOP_LIMIT) {
-                            throw new RuntimeException("Infinite loop detected - for statement");
-                        }
+                for (Object key : map.keySet()) {
+                    variableName.setValue(scope, key);
+                    if (wrapBreakBlock(body, scope)) {
+                        break;
+                    }
+                    if (step++ > INFINITE_LOOP_LIMIT) {
+                        throw new RuntimeException("Infinite loop detected - for statement");
                     }
                 }
             } else if (value instanceof List list) {
                 int step = 0;
-                try (Scope blockScope = scope.newBlock()) {
-                    for (int i = 0; i < list.size(); i++) {
-                        blockScope.putVariable(variableName, i);
-                        if (wrapBreakBlock(body, blockScope)) {
-                            break;
-                        }
-                        if (step++ > INFINITE_LOOP_LIMIT) {
-                            throw new RuntimeException("Infinite loop detected - for statement");
-                        }
+                for (int i = 0; i < list.size(); i++) {
+                    variableName.setValue(scope, i);
+                    if (wrapBreakBlock(body, scope)) {
+                        break;
+                    }
+                    if (step++ > INFINITE_LOOP_LIMIT) {
+                        throw new RuntimeException("Infinite loop detected - for statement");
                     }
                 }
             }
@@ -397,11 +395,11 @@ public class AstNodes {
     }
 
     public static class ForOfStatementNode extends ASTNode {
-        protected String variableName;
-        protected ASTNode expression;
-        protected ASTNode body;
+        public final VariableDeclarationNode variableName;
+        public final ASTNode expression;
+        public final ASTNode body;
 
-        public ForOfStatementNode(String variableName, ASTNode expression, ASTNode body) {
+        public ForOfStatementNode(VariableDeclarationNode variableName, ASTNode expression, ASTNode body) {
             this.variableName = variableName;
             this.expression = expression;
             this.body = body;
@@ -412,15 +410,13 @@ public class AstNodes {
             Object value = wrapOptionalNotFound(expression, scope);
             if (value instanceof List list) {
                 int step = 0;
-                try (Scope blockScope = scope.newBlock()) {
-                    for (Object o : list) {
-                        blockScope.putVariable(variableName, o);
-                        if (wrapBreakBlock(body, blockScope)) {
-                            break;
-                        }
-                        if (step++ > INFINITE_LOOP_LIMIT) {
-                            throw new RuntimeException("Infinite loop detected - for statement");
-                        }
+                for (Object o : list) {
+                    variableName.setValue(scope, o);
+                    if (wrapBreakBlock(body, scope)) {
+                        break;
+                    }
+                    if (step++ > INFINITE_LOOP_LIMIT) {
+                        throw new RuntimeException("Infinite loop detected - for statement");
                     }
                 }
             }
@@ -443,7 +439,7 @@ public class AstNodes {
     }
 
     public static class ReturnStatementNode extends ASTNode {
-        protected ASTNode expression;
+        public final ASTNode expression;
 
         public ReturnStatementNode(ASTNode expression) {
             this.expression = expression;
@@ -457,20 +453,16 @@ public class AstNodes {
     }
 
     public static class SwitchStatementNode extends ASTNode {
-        protected ASTNode discriminant;
-        protected List<SwitchCaseNode> cases = new ArrayList<>();
-        protected ASTNode defaultCase;
+        public final ASTNode discriminant;
+        public final List<SwitchCaseNode> cases = new ArrayList<>();
+        public ASTNode defaultCase;
 
         public SwitchStatementNode(ASTNode discriminant) {
             this.discriminant = discriminant;
         }
 
-        public void addCase(ASTNode node) {
-            if (node instanceof SwitchCaseNode caseNode) {
-                cases.add(caseNode);
-            } else {
-                throw new RuntimeException("Invalid case node");
-            }
+        public void addCase(SwitchCaseNode node) {
+            cases.add(node);
         }
 
         public void setDefaultCase(ASTNode defaultCase) {
@@ -480,28 +472,26 @@ public class AstNodes {
         @Override
         public Object exec(Scope scope) {
             Object discriminantValue = wrapOptionalNotFound(discriminant, scope);
-            try (Scope blockScope = scope.newBlock()) {
-                boolean switched = false;
-                for (SwitchCaseNode caseNode : cases) {
-                    Object caseValue = caseNode.test.exec(blockScope);
-                    if (switched || JsOps.strictEqual(discriminantValue, caseValue)) {
-                        switched = true;
-                        if (wrapBreakBlock(caseNode, blockScope)) {
-                            return null;
-                        }
+            boolean switched = false;
+            for (SwitchCaseNode caseNode : cases) {
+                Object caseValue = caseNode.test.exec(scope);
+                if (switched || JsOps.strictEqual(discriminantValue, caseValue)) {
+                    switched = true;
+                    if (wrapBreakBlock(caseNode, scope)) {
+                        return null;
                     }
                 }
-                if (defaultCase != null) {
-                    wrapBreakBlock(defaultCase, blockScope);
-                }
+            }
+            if (defaultCase != null) {
+                wrapBreakBlock(defaultCase, scope);
             }
             return null;
         }
     }
 
     public static class SwitchCaseNode extends ASTNode {
-        protected ASTNode test;
-        protected List<ASTNode> consequent;
+        public final ASTNode test;
+        public final List<ASTNode> consequent;
 
         public SwitchCaseNode(ASTNode test, List<ASTNode> consequent) {
             this.test = test;
@@ -518,7 +508,7 @@ public class AstNodes {
     }
 
     public static class SwitchDefaultNode extends ASTNode {
-        protected List<ASTNode> consequent;
+        public final List<ASTNode> consequent;
 
         public SwitchDefaultNode(List<ASTNode> consequent) {
             this.consequent = consequent;
@@ -534,23 +524,25 @@ public class AstNodes {
     }
 
     public static class ThrowStatementNode extends ASTNode {
-        protected ASTNode expression;
+        public final ASTNode expression;
+        public final TokenPos tokenPos;
 
-        public ThrowStatementNode(ASTNode expression) {
+        public ThrowStatementNode(ASTNode expression, TokenPos tokenPos) {
             this.expression = expression;
+            this.tokenPos = tokenPos;
         }
 
         @Override
         public Object exec(Scope scope) {
             Object value = expression.exec(scope);
-            throw new ExecuteScriptException("throw", value);
+            throw new ExecuteScriptException("throw", value, tokenPos);
         }
     }
 
     public static class TryStatementNode extends ASTNode {
-        protected ASTNode block;
-        protected CatchClauseNode catchClause;
-        protected ASTNode finallyBlock;
+        public final ASTNode block;
+        public final CatchClauseNode catchClause;
+        public final ASTNode finallyBlock;
 
         public TryStatementNode(ASTNode block, CatchClauseNode catchClause, ASTNode finallyBlock) {
             this.block = block;
@@ -560,27 +552,21 @@ public class AstNodes {
 
         @Override
         public Object exec(Scope scope) {
-            try (Scope blockScope = scope.newBlock()) {
-                block.exec(blockScope);
+            try {
+                block.exec(scope);
             } catch (BreakBlockException e) {
                 throw e;
-            } catch (Exception e) {
-                Object throwValue = e instanceof ExecuteScriptException e2 ? (e2.throwValue() != null ? e2.throwValue
-                                                                                                      : e2.getMessage())
-                                                                           : e.getMessage();
+            } catch (ExecuteScriptException e) {
+                Object throwValue = e.throwValue() != null ? e.throwValue() : e.getMessage();
                 if (catchClause != null) {
-                    try (Scope catchScope = scope.newBlock()) {
-                        if (catchClause.param != null) {
-                            catchScope.defineLocalVar(false, catchClause.param, throwValue);
-                        }
-                        catchClause.exec(catchScope);
+                    if (catchClause.param != null) {
+                        catchClause.param.setValue(scope, throwValue);
                     }
+                    catchClause.exec(scope);
                 }
             } finally {
                 if (finallyBlock != null) {
-                    try (Scope finallyScope = scope.newBlock()) {
-                        finallyBlock.exec(finallyScope);
-                    }
+                    finallyBlock.exec(scope);
                 }
             }
             return null;
@@ -588,10 +574,10 @@ public class AstNodes {
     }
 
     public static class CatchClauseNode extends ASTNode {
-        protected String param;
-        protected ASTNode body;
+        public final VariableDeclarationNode param;
+        public final ASTNode body;
 
-        public CatchClauseNode(String param, ASTNode body) {
+        public CatchClauseNode(VariableDeclarationNode param, ASTNode body) {
             this.param = param;
             this.body = body;
         }
@@ -606,10 +592,10 @@ public class AstNodes {
     // expression nodes
 
     public static class BinaryExpressionNode extends ASTNode implements ExecuteWithReturn {
-        protected ASTNode left;
-        protected String operator;
-        protected Function<Scope, Object> operatorFunction;
-        protected ASTNode right;
+        public final ASTNode left;
+        public final String operator;
+        public final Function<Scope, Object> operatorFunction;
+        public final ASTNode right;
 
         public BinaryExpressionNode(ASTNode left, String operator, ASTNode right) {
             this.left = left;
@@ -642,7 +628,7 @@ public class AstNodes {
             } else {
                 BiFunction<Object, Object, Object> operand = JsOps.operation(operator);
                 if (operand == null) {
-                    throw new RuntimeException("Invalid operator " + operator);
+                    throw new JsParser.SyntaxError("Invalid operator " + operator);
                 }
                 this.operatorFunction = (scope) -> {
                     Object leftValue = wrapOptionalNotFound(left, scope);
@@ -659,7 +645,7 @@ public class AstNodes {
     }
 
     public static class StringConcatExpressionNode extends ASTNode implements ExecuteWithReturn {
-        protected List<ASTNode> items;
+        public final List<ASTNode> items;
 
         public StringConcatExpressionNode(List<ASTNode> items) {
             this.items = items;
@@ -677,10 +663,10 @@ public class AstNodes {
     }
 
     public static class AssignmentExpressionNode extends ASTNode implements ExecuteWithReturn {
-        protected ASTNode left;
-        protected String operator;
-        protected ASTNode right;
-        protected BiFunction<GetSet, Object, Object> assignmentFunction;
+        public final ASTNode left;
+        public final String operator;
+        public final ASTNode right;
+        public final BiFunction<GetSet, Object, Object> assignmentFunction;
 
         public AssignmentExpressionNode(ASTNode left, String operator, ASTNode right) {
             this.left = left;
@@ -695,7 +681,7 @@ public class AstNodes {
                 String operator2 = operator.substring(0, operator.length() - 1);
                 BiFunction<Object, Object, Object> operand = JsOps.operation(operator2);
                 if (operand == null) {
-                    throw new RuntimeException("Invalid operator " + operator);
+                    throw new JsParser.SyntaxError("Invalid operator " + operator);
                 }
                 assignmentFunction = (leftGetSet, rightValue) -> {
                     Object leftValue = leftGetSet.value();
@@ -723,9 +709,9 @@ public class AstNodes {
     }
 
     public static class ConditionalExpressionNode extends ASTNode implements ExecuteWithReturn {
-        protected ASTNode condition;
-        protected ASTNode trueExpression;
-        protected ASTNode falseExpression;
+        public final ASTNode condition;
+        public final ASTNode trueExpression;
+        public final ASTNode falseExpression;
 
         public ConditionalExpressionNode(ASTNode condition, ASTNode trueExpression, ASTNode falseExpression) {
             this.condition = condition;
@@ -745,9 +731,9 @@ public class AstNodes {
     }
 
     public static class UnaryExpressionNode extends ASTNode implements ExecuteWithReturn {
-        protected String operator;
-        protected ASTNode operand;
-        protected Function<Scope, Object> unaryFunction;
+        public final String operator;
+        public final ASTNode operand;
+        public final Function<Scope, Object> unaryFunction;
 
         public UnaryExpressionNode(String operator, ASTNode operand) {
             this.operator = operator;
@@ -768,7 +754,7 @@ public class AstNodes {
                     case "-" -> JsTypes::unaryMinus;
                     case "!" -> (v) -> !JsTypes.toBoolean(v);
                     case "typeof" -> JsTypes::typeof;
-                    default -> throw new RuntimeException("Invalid operator " + operator);
+                    default -> throw new JsParser.SyntaxError("Invalid operator " + operator);
                 };
                 this.unaryFunction = (scope) -> {
                     Object value = wrapOptionalNotFound(operand, scope);
@@ -793,11 +779,12 @@ public class AstNodes {
         }
 
         private Object typeofScopeVar(IdentifierNode identifierNode, Scope scope) {
-            Scope.VarAccess varAccess = scope.getVar(identifierNode.name);
-            if (varAccess == null) {
-                return Undefined.INSTANCE.typeOf();
+            try {
+                Object value = identifierNode.get(scope);
+                return JsTypes.typeof(value);
+            } catch (NotFoundException e) {
+                return Undefined.INSTANCE.toString();
             }
-            return JsTypes.typeof(varAccess.value());
         }
 
         @Override
@@ -806,44 +793,42 @@ public class AstNodes {
         }
     }
 
-    // literal nodes
-    public static class ThisNode extends ASTNode implements ExecuteWithReturn {
-        // Represents 'this' keyword
-        @Override
-        public Object exec(Scope scope) {
-            Scope.VarAccess varAccess = scope.getVar("this");
-            return varAccess != null ? varAccess.value() : scope;
-        }
-    }
-
-    private static final List<String> futuredReservedWords = List.of("class", "debugger", "delete", "enum", "export",
-                                                                     "extends", "import", "in", "instanceof",
-                                                                     "interface", "new", "super", "package", "private",
-                                                                     "protected", "public", "void", "with");
-
     public static class IdentifierNode extends ASTNode implements ExecuteWithReturn, GetSetReturn {
-        protected String name;
+        public final String name;
+        public final TokenPos tokenPos;
+        public int index = -1;
+        public boolean wasAssigned;
 
-        public IdentifierNode(String name) {
-            if (futuredReservedWords.contains(name)) {
-                throw new RuntimeException("Identifier name is a future reserved word: " + name);
-            }
+        public IdentifierNode(String name, TokenPos tokenPos) {
             this.name = name;
+            this.tokenPos = tokenPos;
         }
 
         @Override
         public Object exec(Scope scope) {
-            return GetSet.scopeGet(scope, name);
+            return get(scope);
         }
 
         @Override
         public GetSet createGetSet(Scope scope) {
-            return GetSet.createGetSet(scope, name, scope);
+            return new GetSet(get(scope), val -> set(scope, val));
+        }
+
+        public Object get(Scope scope) {
+            try {
+                return scope.getValue(index, name);
+            } catch (RuntimeException e) {
+                throw new ExecuteScriptException(e.getMessage(), tokenPos);
+            }
+        }
+
+        public void set(Scope scope, Object value) {
+            scope.setStackValue(index, name, value);
         }
     }
 
     public static class ConstantNode extends ASTNode implements ExecuteWithReturn {
-        protected final Object value;
+        public final Object value;
 
         public ConstantNode(Object value) {
             this.value = value;
@@ -856,7 +841,7 @@ public class AstNodes {
     }
 
     public static class ArrayLiteralNode extends ASTNode implements ExecuteWithReturn {
-        protected List<ASTNode> elements;
+        public final List<ASTNode> elements;
 
         public ArrayLiteralNode(List<ASTNode> elements) {
             this.elements = elements;
@@ -873,7 +858,7 @@ public class AstNodes {
     }
 
     public static class ObjectLiteralNode extends ASTNode implements ExecuteWithReturn {
-        protected List<PropertyNode> properties;
+        public final List<PropertyNode> properties;
 
         public ObjectLiteralNode(List<PropertyNode> properties) {
             this.properties = properties;
@@ -894,8 +879,8 @@ public class AstNodes {
     }
 
     public static class PropertyNode extends ASTNode {
-        protected String key;
-        protected ASTNode value;
+        public final String key;
+        public final ASTNode value;
 
         public PropertyNode(String key, ASTNode value) {
             this.key = key;
@@ -904,7 +889,7 @@ public class AstNodes {
     }
 
     public static class OptionalNode extends ASTNode implements ExecuteWithReturn {
-        protected ASTNode object;
+        public final ASTNode object;
 
         public OptionalNode(ASTNode object) {
             this.object = object;
@@ -925,18 +910,23 @@ public class AstNodes {
     }
 
     public static class MemberExpressionNode extends ASTNode implements ExecuteWithReturn, GetSetReturn {
-        protected ASTNode object;
-        protected String staticProperty;
-        protected ASTNode dynamicProperty;
+        public final ASTNode object;
+        public final String staticProperty;
+        public final ASTNode dynamicProperty;
+        public final TokenPos tokenPos;
 
-        public MemberExpressionNode(ASTNode object, ASTNode dynamicProperty) {
+        public MemberExpressionNode(ASTNode object, ASTNode dynamicProperty, TokenPos tokenPos) {
             this.object = object;
+            this.tokenPos = tokenPos;
+            this.staticProperty = null;
             this.dynamicProperty = dynamicProperty;
         }
 
-        public MemberExpressionNode(ASTNode object, String staticProperty) {
+        public MemberExpressionNode(ASTNode object, String staticProperty, TokenPos tokenPos) {
             this.object = object;
             this.staticProperty = staticProperty;
+            this.tokenPos = tokenPos;
+            this.dynamicProperty = null;
         }
 
         @Override
@@ -947,49 +937,49 @@ public class AstNodes {
         @Override
         public GetSet createGetSet(Scope scope) {
             Object parent = object.exec(scope);
-            Object property = staticProperty != null ? staticProperty : dynamicProperty.exec(scope);
-            return GetSet.createGetSet(parent, property, scope);
+            Object property = staticProperty != null ? staticProperty
+                                                     : dynamicProperty != null ? dynamicProperty.exec(scope) : null;
+            return GetSet.createGetSet(parent, property, scope, tokenPos);
         }
     }
 
     // function nodes
 
     public static class FunctionDeclarationNode extends ASTNode implements ExecuteWithReturn {
-        protected JsFunction function;
+        public final JsFunction function;
+        public final String name;
+        public final TokenPos tokenPos;
+        public int index = -1;
 
-        public FunctionDeclarationNode(String name, List<String> params, ASTNode body, boolean useLocalScope) {
-            //check duplicated paremeter names
-            for (int i = 0; i < params.size(); i++) {
-                for (int j = i + 1; j < params.size(); j++) {
-                    if (params.get(i).equals(params.get(j))) {
-                        throw new RuntimeException("Duplicate parameter name: " + params.get(i));
-                    }
-                }
-            }
-            this.function = new JsFunction(name, params, body, useLocalScope);
+        public FunctionDeclarationNode(String name, TokenPos tokenPos, List<String> params, ASTNode body,
+                                       Scope.ScopeDef scopeDef, boolean inlineThis) {
+            this.function = new JsFunction(name, params, new JsFunction.LocalFunctionExec(body), inlineThis, scopeDef);
+            this.name = name;
+            this.tokenPos = tokenPos;
         }
 
         @Override
         public Object exec(Scope scope) {
-            return function.setParent(scope);
+            return function.initScope(scope);
         }
-
     }
 
     public static class CallExpressionNode extends ASTNode implements ExecuteWithReturn {
-        protected ASTNode callee;
-        protected List<ASTNode> arguments;
+        public final ASTNode callee;
+        public final List<ASTNode> arguments;
+        public final TokenPos tokenPos;
 
-        public CallExpressionNode(ASTNode callee, List<ASTNode> arguments) {
+        public CallExpressionNode(ASTNode callee, List<ASTNode> arguments, TokenPos tokenPos) {
             this.callee = callee;
             this.arguments = arguments;
+            this.tokenPos = tokenPos;
         }
 
         @Override
         public Object exec(Scope scope) {
             Object functionRaw = callee.exec(scope);
             if (!(functionRaw instanceof JsFunction function)) {
-                throw new RuntimeException(JsTypes.typeof(functionRaw) + " is not function");
+                throw new AstNodes.ExecuteScriptException(JsTypes.typeof(functionRaw) + " is not function", tokenPos);
             }
             // Prepare arguments
             List<Object> args = new ArrayList<>();
@@ -1007,9 +997,14 @@ public class AstNodes {
     public static class ExecuteScriptException extends RuntimeException {
         private final Object throwValue;
 
-        public ExecuteScriptException(String message, Object throwValue) {
-            super(message != null ? message : "script throw " + throwValue);
+        public ExecuteScriptException(String message, Object throwValue, TokenPos tokenPos) {
+            super(tokenPos != null ? message + " at line " + tokenPos.line() + ", column " + tokenPos.column()
+                                   : message);
             this.throwValue = throwValue;
+        }
+
+        public ExecuteScriptException(String message, TokenPos tokenPos) {
+            this(message, null, tokenPos);
         }
 
         public Object throwValue() {
@@ -1032,19 +1027,19 @@ public class AstNodes {
 
     public static class ReturnException extends ExecuteScriptException {
         public ReturnException(Object value) {
-            super("return", value);
+            super("return", value, null);
         }
     }
 
     public static class NotFoundException extends ExecuteScriptException {
-        public NotFoundException(String message) {
-            super(message, null);
+        public NotFoundException(String message, TokenPos tokenPos) {
+            super(message, null, tokenPos);
         }
     }
 
     public static class OptionalNotFoundException extends ExecuteScriptException {
         public OptionalNotFoundException(String message) {
-            super(message, null);
+            super(message, null, null);
         }
     }
 

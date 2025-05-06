@@ -1,7 +1,6 @@
 package eu.aston.javajs.types;
 
 import java.util.List;
-import java.util.function.BiFunction;
 
 import eu.aston.javajs.AstNodes.ASTNode;
 import eu.aston.javajs.AstNodes.ReturnException;
@@ -11,39 +10,44 @@ public class JsFunction implements IJsType {
 
     final String name;
     final List<String> params;
-    final ASTNode body;
-    final BiFunction<Scope, List<Object>, Object> nativeFunction;
-    private boolean useLocalScope = false;
+    final IJsFunctionExec exec;
+    final Scope.ScopeDef scopeDef;
+    final boolean inlineThis;
     final private Object parent;
+    final private Scope.Ref[] initScope;
 
-    public JsFunction(String name, List<String> params, ASTNode body, boolean useLocalScope) {
+    public JsFunction(String name, List<String> params, IJsFunctionExec exec, boolean inlineThis,
+                      Scope.ScopeDef scopeDef) {
         this.name = name;
         this.params = params;
-        this.body = body;
-        this.nativeFunction = null;
+        this.exec = exec;
+        this.scopeDef = scopeDef;
+        this.inlineThis = inlineThis;
         this.parent = null;
-        this.useLocalScope = useLocalScope;
+        this.initScope = null;
     }
 
-    public JsFunction(String name, List<String> params, BiFunction<Scope, List<Object>, Object> nativeFunction) {
-        this.name = name;
-        this.params = params;
-        this.body = null;
-        this.nativeFunction = nativeFunction;
-        this.parent = null;
-    }
-
-    private JsFunction(String name, List<String> params, ASTNode body,
-                       BiFunction<Scope, List<Object>, Object> nativeFunction, boolean useLocalScope, Object parent) {
-        this.name = name;
-        this.params = params;
-        this.body = body;
-        this.nativeFunction = nativeFunction;
-        this.useLocalScope = useLocalScope;
+    public JsFunction(JsFunction fn, Object parent) {
+        this.name = fn.name;
+        this.params = fn.params;
+        this.exec = fn.exec;
+        this.scopeDef = fn.scopeDef;
+        this.inlineThis = fn.inlineThis;
         this.parent = parent;
+        this.initScope = fn.initScope;
     }
 
-    public String name(){
+    public JsFunction(JsFunction fn, Scope.Ref[] initScope) {
+        this.name = fn.name;
+        this.params = fn.params;
+        this.exec = fn.exec;
+        this.scopeDef = fn.scopeDef;
+        this.inlineThis = fn.inlineThis;
+        this.parent = fn.parent;
+        this.initScope = initScope;
+    }
+
+    public String name() {
         return name;
     }
 
@@ -52,36 +56,34 @@ public class JsFunction implements IJsType {
     }
 
     public JsFunction setParent(Object parent) {
-        if (useLocalScope) {
+        if (inlineThis) {
             return this;
         }
-        return new JsFunction(name, params, body, nativeFunction, useLocalScope, parent);
+        return new JsFunction(this, parent);
+    }
+
+    public JsFunction initScope(Scope scope) {
+        if (scopeDef == null) {
+            return this;
+        }
+        return new JsFunction(this, scopeDef.createInitScope(scope));
     }
 
     public Object exec(Scope scope, List<Object> args) {
-        Scope functionScope = parent instanceof Scope ? ((Scope) parent).newFunctionBlock(useLocalScope, null)
-                                                      : scope.newFunctionBlock(useLocalScope, parent);
-        functionScope.putVariable("arguments", args);
-        for (int i = 0; i < params.size(); i++) {
-            String param = params.get(i);
-            if (i < args.size()) {
-                functionScope.putVariable(param, args.get(i));
-            } else {
-                functionScope.putVariable(param, Undefined.INSTANCE);
+        if (scopeDef != null) {
+            Scope functionScope = new Scope(scope, scopeDef.size());
+            functionScope.setStackValue(0, "this", parent != null ? parent : scope.rootThis());
+            functionScope.setStackValue(1, "arguments", args);
+            for (int i = 0; i < params.size(); i++) {
+                functionScope.setStackValue(i + 2, params.get(i), args.get(i));
             }
+            scopeDef.useInitScope(functionScope, initScope);
+            return exec.exec(functionScope, args);
+        } else {
+            Scope functionScope = new Scope(scope, 1);
+            functionScope.setStackValue(0, "this", parent != null ? parent : scope.rootThis());
+            return exec.exec(functionScope, args);
         }
-        if (body != null) {
-            try {
-                body.exec(functionScope);
-            } catch (ReturnException e) {
-                return e.throwValue();
-            }
-            return Undefined.INSTANCE;
-        }
-        if (nativeFunction != null) {
-            return nativeFunction.apply(functionScope, args);
-        }
-        return Undefined.INSTANCE;
     }
 
     @Override
@@ -97,5 +99,31 @@ public class JsFunction implements IJsType {
     @Override
     public String typeOf() {
         return "function";
+    }
+
+    public static class LocalFunctionExec implements IJsFunctionExec {
+        private final ASTNode body;
+
+        public LocalFunctionExec(ASTNode body) {
+            this.body = body;
+        }
+
+        @Override
+        public Object exec(Scope scope, List<Object> args) {
+            try {
+                body.exec(scope);
+            } catch (ReturnException e) {
+                return e.throwValue();
+            }
+            return Undefined.INSTANCE;
+        }
+    }
+
+    public static JsFunction nativeFunction(String name, IJsFunctionExec nativeFunction) {
+        int pos1 = name.indexOf("(");
+        int pos2 = name.indexOf(")");
+        String functionName = pos1 > 0 ? name.substring(0, pos1) : name;
+        List<String> params = pos1 > 0 && pos2 > pos1 ? List.of(name.substring(pos1 + 1, pos2).split(",")) : List.of();
+        return new JsFunction(functionName, params, nativeFunction, false, null);
     }
 }

@@ -48,9 +48,6 @@ public class JsonTokenizer {
                     case '\\':
                         sb.append('\\');
                         break;
-                    case '/':
-                        sb.append('/');
-                        break;
                     case 'b':
                         sb.append('\b');
                         break;
@@ -76,7 +73,7 @@ public class JsonTokenizer {
                         sb.append((char) Integer.parseInt(hex.toString(), 16));
                         break;
                     default:
-                        sb.append(currentChar);
+                        throw new RuntimeException("Unexpected token '\\" + currentChar + "' is not valid JSON");
                 }
             } else {
                 sb.append(currentChar);
@@ -84,7 +81,7 @@ public class JsonTokenizer {
             advance();
         }
         if (index == str.length()) {
-            throw new RuntimeException("unclosed string");
+            throw new RuntimeException("Unterminated string in JSON");
         }
         advance(); // Skip the closing quote
         return sb.toString();
@@ -139,7 +136,7 @@ public class JsonTokenizer {
         } else if (Character.isDigit(currentChar) || currentChar == '-') {
             return parseNumber();
         } else {
-            throw new RuntimeException("Unexpected token: " + currentChar);
+            throw new RuntimeException("Unexpected non-whitespace character after JSON at position " + index);
         }
     }
 
@@ -158,7 +155,7 @@ public class JsonTokenizer {
             skipWhitespace();
 
             if (currentChar != '"') {
-                throw new RuntimeException("Expected property name");
+                throw new RuntimeException("Expected property name or '}' in JSON at position " + index);
             }
 
             String key = parseString();
@@ -166,7 +163,7 @@ public class JsonTokenizer {
             skipWhitespace();
 
             if (currentChar != ':') {
-                throw new RuntimeException("Expected ':'");
+                throw new RuntimeException("Expected ':' after property name in JSON at position " + index);
             }
 
             advance(); // Skip the colon
@@ -181,7 +178,7 @@ public class JsonTokenizer {
             }
 
             if (currentChar != ',') {
-                throw new RuntimeException("Expected ',' or '}' in string " + str.substring(index));
+                throw new RuntimeException("Expected ':' after property name in JSON at position " + index);
             }
 
             advance(); // Skip the comma
@@ -213,7 +210,7 @@ public class JsonTokenizer {
             }
 
             if (currentChar != ',') {
-                throw new RuntimeException("Expected ',' or ']'");
+                throw new RuntimeException("Expected ',' or ']' after array element in JSON at position " + index);
             }
 
             advance(); // Skip the comma
@@ -227,7 +224,9 @@ public class JsonTokenizer {
             throw new RuntimeException("Unexpected token: " + str.substring(index));
         }
         if (!constName.equals(str.substring(index, index + constName.length()))) {
-            throw new RuntimeException("Expected '" + constName + "'");
+            throw new RuntimeException(
+                    "Unexpected token '" + str.substring(index, index + constName.length()) + "' in JSON at position " +
+                            index);
         }
         index += constName.length() - 1;
         advance();
