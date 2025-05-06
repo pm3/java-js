@@ -197,7 +197,9 @@ public class VariablesAnalyzer {
     private void checkChangingConst(FnVar v) {
         for (AstNodes.ASTNode n : v.nodes) {
             if (n instanceof AstNodes.IdentifierNode in && in.wasAssigned) {
-                throw new RuntimeException("ReferenceError: rewrite constant variable '" + v.name + "'");
+                throw new JsParser.SyntaxError(
+                        "TypeError: Assignment to constant variable '" + v.name + "' " +
+                                in.tokenPos.line() + " column " + in.tokenPos.column());
             }
         }
     }
