@@ -738,9 +738,7 @@ public class AstNodes {
         public UnaryExpressionNode(String operator, ASTNode operand) {
             this.operator = operator;
             this.operand = operand;
-            if (operator.equals("typeof") && operand instanceof IdentifierNode identifierNode) {
-                this.unaryFunction = (scope) -> typeofScopeVar(identifierNode, scope);
-            } else if (operator.equals("var++")) {
+            if (operator.equals("var++")) {
                 this.unaryFunction = createIncrementFn(operand, +1, true);
             } else if (operator.equals("var--")) {
                 this.unaryFunction = createIncrementFn(operand, -1, true);
@@ -776,15 +774,6 @@ public class AstNodes {
                     return Undefined.INSTANCE;
                 }
             };
-        }
-
-        private Object typeofScopeVar(IdentifierNode identifierNode, Scope scope) {
-            try {
-                Object value = identifierNode.get(scope);
-                return JsTypes.typeof(value);
-            } catch (NotFoundException e) {
-                return Undefined.INSTANCE.toString();
-            }
         }
 
         @Override
