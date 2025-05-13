@@ -90,20 +90,8 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 ## ⚠️ Differences from JavaScript:
 
 - `typeof []` returns `"array"`
-- Certain JavaScript-specific quirks (WTF moments) are removed or unified:
-   - Array auto-converts to string for comparison
-   - Empty array equals false
-   - Empty array equals negated empty array
-   - Object plus array is 0
-   - Empty array converts to 0
-   - `!{} === false`
-   - `![] === false`
-   - `NaN` is not equal to itself
-   - Large integers lose precision
-   - `empty array % number = 0 % number`
-   - `single item array % number = number % number`
-   - `empty array == 0` is true (`[]` converts to `0`)
-   - `[1] == 1` is true (`[1]` converts to '1' then to 1)
+- `typeof null` returns `"null"`
+- Certain JavaScript-specific quirks (WTF moments) are removed or unified
 
 ---
 
@@ -136,9 +124,7 @@ Scope rootScope = JsSdk.createRootScope();
 JsLexer lexer = new JsLexer(script);
 JsParser parser = new JsParser(lexer.tokenize());
 ASTNode programNode = parser.parse();
-programNode.
-
-exec(rootScope);
+programNode.exec(rootScope);
 ```
 
 ## Compile Once, Run Many
