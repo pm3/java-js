@@ -40,7 +40,7 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 
 ### Supported Syntax and Features:
 
-- **Variables:** `var`, `let`, `const`
+- **Variables:** `let`, `const`
 - **Operators:** `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `+`, `-`, `*`, `/`, `%`
 - **Unary Operations:** `+`, `-`, `!`, `typeof`
 - **Increment/Decrement:** `++`, `--` (prefix and postfix)
@@ -76,7 +76,7 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 ---
 
 ## 🚫 Not Supported:
-
+- `var` keyword, use `let` or `const` instead
 - `new` operator
 - `async/await`
 - `class`, `instanceof`
@@ -100,7 +100,7 @@ All scripts run in `"use strict"` mode and the engine uses native Java objects.
 <dependency>
    <groupId>eu.aston</groupId>
    <artifactId>java-js</artifactId>
-   <version>1.0.0</version>
+   <version>1.1.0</version>
 </dependency>
 ```
 
