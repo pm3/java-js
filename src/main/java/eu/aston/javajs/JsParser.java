@@ -348,7 +348,7 @@ public class JsParser {
         return expression;
     }
 
-    // IfStatement = "if" "(" Expression ")" Statement ("else" Statement)?
+    // IfStatement = "if" "(" Expression ")" Statement ("else" Statement)|("else" "if" "(" Expression ")" Statement)
     private ASTNode parseIfStatement() {
         expect(TokenType.KEYWORD, "if");
         expect(TokenType.PUNCTUATION, "(");
@@ -360,7 +360,14 @@ public class JsParser {
         ASTNode elseStatement = null;
         if (currentToken.getType() == TokenType.KEYWORD && currentToken.getValue().equals("else")) {
             advance();
-            elseStatement = parseStatement();
+            // Check if this is an else-if
+            if (currentToken.getType() == TokenType.KEYWORD && currentToken.getValue().equals("if")) {
+                // Recursively parse the else-if as a new if statement
+                elseStatement = parseIfStatement();
+            } else {
+                // Regular else clause
+                elseStatement = parseStatement();
+            }
         }
 
         return new IfStatementNode(condition, thenStatement, elseStatement);
