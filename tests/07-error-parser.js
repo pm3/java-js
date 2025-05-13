@@ -165,3 +165,27 @@ eval('let y1 = 1; let y1 = 2;');
 /*parse-error*/
 // Missing initializer in const declaration
 const x;
+
+/*parse-error*/
+// Variable declaration not allowed directly in if statement
+if (true) let x = 1;
+
+/*parse-error*/
+// Variable declaration not allowed directly in else statement
+if (false) {} else let y = 2;
+
+/*parse-error*/
+// Variable declaration not allowed directly in if statement (const)
+if (true) const z = 3;
+
+/*parse-error*/
+// Variable declaration not allowed directly in else statement (const)
+if (false) {} else const w = 4;
+
+/*parse-error*/
+// Multiple variable declarations not allowed directly in if statement
+if (true) let a = 1, b = 2;
+
+/*parse-error*/
+// Multiple variable declarations not allowed directly in else statement
+if (false) {} else let c = 3, d = 4;
