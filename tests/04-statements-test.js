@@ -112,6 +112,40 @@ function testLoopStatements() {
   }
   assert(forResult === 10, "for loop executes the expected number of times (0+1+2+3+4=10)");
   
+  // for loop with missing initialization
+  let forNoInitResult = 0;
+  let i = 0;
+  for (; i < 5; i++) {
+    forNoInitResult += i;
+  }
+  assert(forNoInitResult === 10, "for loop works without initialization part");
+  
+  // for loop with missing condition
+  let forNoConditionResult = 0;
+  for (let j = 0; ; j++) {
+    forNoConditionResult += j;
+    if (j >= 4) break; // Need to break manually when no condition
+  }
+  assert(forNoConditionResult === 10, "for loop works without condition part");
+  
+  // for loop with missing update
+  let forNoUpdateResult = 0;
+  for (let k = 0; k < 5;) {
+    forNoUpdateResult += k;
+    k++; // Update manually when no update part
+  }
+  assert(forNoUpdateResult === 10, "for loop works without update part");
+  
+  // for loop with all parts missing
+  let forEmptyResult = 0;
+  let l = 0;
+  for (;;) {
+    forEmptyResult += l;
+    l++;
+    if (l >= 5) break; // Need to break manually
+  }
+  assert(forEmptyResult === 10, "for loop works with all parts missing");
+  
   // for...in loop
   const personForIn = { name: 'John', age: 30 };
   const forInResult = [];
