@@ -90,6 +90,10 @@ const str1 = "This is a \
 multi-line string \
 using backslash";
 
+/*parse-error*/
+// Assignment to constant variable
+const constTest = "test";
+constTest = "update";
 
 /*parse-error*/
 // Missing line terminator
@@ -145,3 +149,15 @@ let str9 = "Invalid hex escape \x3G";
 /*parse-error*/
 // String with invalid hex escape - too short
 let str10 = "Invalid hex escape \x2";
+
+/*parse-error*/
+// enum is a future reserved word
+const enum = 5;
+
+/*parse-error*/
+// await is a future reserved word
+let await = 10;
+
+/*parse-error*/
+// SyntaxError in strict mode
+eval('let y1 = 1; let y1 = 2;');

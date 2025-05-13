@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import eu.aston.javajs.AstNodes;
 import eu.aston.javajs.Scope;
 
 public class JsonTokenizer {
@@ -236,9 +237,12 @@ public class JsonTokenizer {
         if (str == null || str.isEmpty()) {
             return null;
         }
-
-        JsonTokenizer tokenizer = new JsonTokenizer(str);
-        return tokenizer.parseValue();
+        try {
+            JsonTokenizer tokenizer = new JsonTokenizer(str);
+            return tokenizer.parseValue();
+        } catch (Exception e) {
+            throw new AstNodes.ExecuteScriptException("parse json error: " + e.getMessage(), null);
+        }
     }
 
     public static String stringify(Scope scope, Object value) {

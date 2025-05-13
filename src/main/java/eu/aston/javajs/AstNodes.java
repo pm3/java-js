@@ -63,7 +63,7 @@ public class AstNodes {
 
         @Override
         public Object exec(Scope scope) {
-            Scope newScope = new Scope(scope, scopeDef.size());
+            Scope newScope = new Scope(scope, scopeDef.size(), null);
             return blockNode.exec(newScope);
         }
     }
@@ -84,7 +84,7 @@ public class AstNodes {
         @Override
         public Object exec(Scope scope) {
             for (FunctionDeclarationNode functionNode : functions) {
-                scope.setStackValue(functionNode.index, functionNode.name, functionNode.function.initScope(scope));
+                functionNode.scopeGetSet.set(scope, functionNode.function.initScope(scope));
             }
             for (ASTNode statement : statements) {
                 wrapOptionalNotFound(statement, scope);
@@ -119,7 +119,7 @@ public class AstNodes {
         public final String identifier;
         public final ASTNode initializer;
         public final TokenPos tokenPos;
-        public int index = -1;
+        public Scope.IGetSet scopeGetSet;
 
         public VariableDeclarationNode(String access, String identifier, TokenPos tokenPos) {
             this.access = access;
@@ -138,12 +138,12 @@ public class AstNodes {
         @Override
         public Object exec(Scope scope) {
             Object value = initializer != null ? wrapOptionalNotFound(initializer, scope) : Undefined.INSTANCE;
-            setValue(scope, value);
+            scopeGetSet.init(scope, value);
             return value;
         }
 
         public void setValue(Scope scope, Object value) {
-            scope.setStackValue(index, identifier, value);
+            scopeGetSet.set(scope, value);
         }
     }
 
@@ -796,7 +796,7 @@ public class AstNodes {
     public static class IdentifierNode extends ASTNode implements ExecuteWithReturn, GetSetReturn {
         public final String name;
         public final TokenPos tokenPos;
-        public int index = -1;
+        public Scope.IGetSet scopeGetSet;
         public boolean wasAssigned;
 
         public IdentifierNode(String name, TokenPos tokenPos) {
@@ -816,14 +816,14 @@ public class AstNodes {
 
         public Object get(Scope scope) {
             try {
-                return scope.getValue(index, name);
+                return scopeGetSet.get(scope);
             } catch (RuntimeException e) {
                 throw new ExecuteScriptException(e.getMessage(), tokenPos);
             }
         }
 
         public void set(Scope scope, Object value) {
-            scope.setStackValue(index, name, value);
+            scopeGetSet.set(scope, value);
         }
     }
 
@@ -949,7 +949,7 @@ public class AstNodes {
         public final JsFunction function;
         public final String name;
         public final TokenPos tokenPos;
-        public int index = -1;
+        public Scope.IGetSet scopeGetSet;
 
         public FunctionDeclarationNode(String name, TokenPos tokenPos, List<String> params, ASTNode body,
                                        Scope.ScopeDef scopeDef, boolean inlineThis) {

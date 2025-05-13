@@ -128,8 +128,7 @@ public class JsParser {
             throw new SyntaxError(e.getMessage() + " " + " at line " + currentToken.getLine() + ", column " +
                                           currentToken.getColumn());
         }
-        variablesAnalyzer.recalc();
-        //VariablesAnalyzer.deepPrint(variablesAnalyzer.getRoot(), 0);
+        variablesAnalyzer.pairAll();
         return new ProgramNode(blockNode, variablesAnalyzer.stackDef());
     }
 
@@ -416,6 +415,7 @@ public class JsParser {
         if (variableAccess() && tokens.get(tokenPosition).getType() == TokenType.IDENTIFIER &&
                 matchPos(tokenPosition + 1, TokenType.KEYWORD, "in")) {
             // Handle for-in loop
+            variablesAnalyzer.startBlock();
             String access = currentToken.getValue();
             advance();
             String identifier = currentToken.getValue();
@@ -426,11 +426,13 @@ public class JsParser {
             ASTNode iterable = parseExpression();
             expect(TokenType.PUNCTUATION, ")");
             ASTNode body = parseStatement();
+            variablesAnalyzer.endBlock();
             return new ForInStatementNode(forVar, iterable, body);
         }
         if (variableAccess() && tokens.get(tokenPosition).getType() == TokenType.IDENTIFIER &&
                 matchPos(tokenPosition + 1, TokenType.KEYWORD, "of")) {
             // Handle for-of loop
+            variablesAnalyzer.startBlock();
             String access = currentToken.getValue();
             advance();
             String identifier = currentToken.getValue();
@@ -441,9 +443,11 @@ public class JsParser {
             ASTNode iterable = parseExpression();
             expect(TokenType.PUNCTUATION, ")");
             ASTNode body = parseStatement();
+            variablesAnalyzer.endBlock();
             return new ForOfStatementNode(forVar, iterable, body);
         }
 
+        variablesAnalyzer.startBlock();
         ASTNode init = null;
         ASTNode condition = null;
         ASTNode update = null;
@@ -478,6 +482,7 @@ public class JsParser {
 
         expect(TokenType.PUNCTUATION, ")");
         ASTNode body = parseStatement();
+        variablesAnalyzer.endBlock();
         return new ForStatementNode(init, condition, update, body);
     }
 
@@ -978,6 +983,7 @@ public class JsParser {
         // Check for catch block
         if (matchAdvance(TokenType.KEYWORD, "catch")) {
 
+            variablesAnalyzer.startBlock();
             VariableDeclarationNode errVar = null;
             if (matchAdvance(TokenType.PUNCTUATION, "(")) {
 
@@ -992,6 +998,7 @@ public class JsParser {
             }
             ASTNode catchBody = parseBlock();
             catchBlock = new CatchClauseNode(errVar, catchBody);
+            variablesAnalyzer.endBlock();
         }
 
         // Check for finally block

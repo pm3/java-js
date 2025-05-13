@@ -1,8 +1,6 @@
 package eu.aston.javajs;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import eu.aston.javajs.types.IJsFunctionExec;
@@ -11,7 +9,8 @@ import eu.aston.javajs.types.JsFunction;
 public class Scope {
 
     private final Map<String, Object> variables;
-    private final Ref[] stack;
+    private final Object[] localStack;
+    private final Ref[] extRefStack;
     private final Scope parentScope;
     private final Scope rootScope;
 
@@ -19,14 +18,16 @@ public class Scope {
     public Scope() {
         this.variables = new HashMap<>();
         this.variables.put("this", new HashMap<>());
-        this.stack = null;
+        this.localStack = null;
+        this.extRefStack = null;
         this.parentScope = null;
         this.rootScope = this;
     }
 
-    public Scope(Scope parentScope, int size) {
+    public Scope(Scope parentScope, int size, Ref[] extRefStack) {
         this.variables = null;
-        this.stack = new Ref[size];
+        this.localStack = new Object[size];
+        this.extRefStack = extRefStack;
         this.parentScope = parentScope;
         this.rootScope = parentScope.rootScope != null ? parentScope.rootScope : parentScope;
     }
@@ -47,102 +48,143 @@ public class Scope {
         return getValue(name) instanceof JsFunction fn ? fn : null;
     }
 
-    public Object getValue(int index, String name) {
-        if (index >= 0) {
-            Ref ref = stack[index];
-            if (ref == null) {
-                throw new RuntimeException("ReferenceError: variable not found '" + name + "'");
-            }
-            return ref.value;
-        }
-        if (!rootScope.variables.containsKey(name)) {
-            throw new RuntimeException("ReferenceError: variable not found '" + name + "'");
-        }
-        return rootScope.variables.get(name);
-    }
-
-    public void setStackValue(int index, String name, Object value) {
-        if (index >= 0) {
-            Ref ref = stack[index];
-            if (ref != null) {
-                ref.value = value;
-            } else {
-                stack[index] = new Ref(value);
-            }
-        } else {
-            setValue(name, value);
-        }
-    }
-
     public void nativeFunction(String name, IJsFunctionExec nativeFunction) {
         JsFunction function = JsFunction.nativeFunction(name, nativeFunction);
         Map<String, Object> vars = variables != null ? variables : rootScope.variables;
         vars.put(function.name(), function);
     }
 
-    public static class ScopeDef {
-        VariablesAnalyzer.FnVar akt;
-        int[][] extDef = null;
-        int deepSize;
+    public void setStackValue(int index, String name, Object value) {
+        Object val = localStack[index];
+        if (val instanceof Ref ref) {
+            ref.value = value;
+        } else {
+            localStack[index] = value;
+        }
+    }
 
-        public ScopeDef(VariablesAnalyzer.FnVar akt) {
-            this.akt = akt;
+    public Object getStackValue(int index, String name) {
+        Object val = localStack[index];
+        return val instanceof Ref ref ? ref.value : val;
+    }
+
+    public static class ScopeDef {
+        VariablesAnalyzer.Fn fn;
+
+        public ScopeDef(VariablesAnalyzer.Fn fn) {
+            this.fn = fn;
         }
 
         public int size() {
-            return akt.children.size();
+            return fn.vars.size();
         }
 
-        private void createExtDef() {
-            List<int[]> l = new ArrayList<>();
-            for (VariablesAnalyzer.FnVar v : akt.children) {
-                if (v.ext != null) {
-                    l.add(v.ext);
-                    if (deepSize < v.ext[1]) {
-                        deepSize = v.ext[1];
-                    }
-                }
+        public Scope createInitScope(Scope scope) {
+            //System.out.println("init scope " + fn.name);
+            if (fn.extRefs.isEmpty()) {
+                return new Scope(scope, fn.vars.size(), null);
             }
-            this.extDef = l.toArray(new int[0][0]);
-        }
-
-        public Ref[] createInitScope(Scope scope) {
-            if (extDef == null) {
-                createExtDef();
-            }
-            Scope[] parents = new Scope[deepSize + 1];
+            Scope[] parents = new Scope[fn.deepLevel + 1];
             Scope s = scope;
             for (int i = 0; i < parents.length; i++) {
                 parents[i] = s;
                 s = s.parentScope;
             }
-            Ref[] extRefs = new Ref[extDef.length];
-            for (int i = 0; i < extRefs.length; i++) {
-                int[] deep = extDef[i];
-                Ref ref = parents[deep[1]].stack[deep[2]];
-                if (ref == null) {
-                    ref = new Ref(null);
-                    parents[deep[1]].stack[deep[2]] = ref;
+            Ref[] refs = new Ref[fn.extRefs.size()];
+            for (VariablesAnalyzer.ExtRef extRef : fn.extRefs) {
+                Object val = parents[extRef.deep].localStack[extRef.varIndex];
+                if (val instanceof Ref ref) {
+                    refs[extRef.index] = ref;
+                } else {
+                    Ref ref = new Ref(val);
+                    parents[extRef.deep].localStack[extRef.varIndex] = ref;
+                    refs[extRef.index] = ref;
                 }
-                extRefs[i] = ref;
             }
-            return extRefs;
+            return new Scope(scope, fn.vars.size(), refs);
+        }
+    }
+
+    public interface IGetSet {
+        Object get(Scope scope);
+
+        void set(Scope scope, Object value);
+
+        default void init(Scope scope, Object value) {
+            set(scope, value);
+        }
+    }
+
+    public static class LocalGetSet implements IGetSet {
+        private final int index;
+
+        public LocalGetSet(int index) {
+            this.index = index;
         }
 
-        public void useInitScope(Scope functionScope, Ref[] initScope) {
-            if (initScope == null || initScope.length == 0 || functionScope == null || functionScope.stack == null) {
-                return;
+        @Override
+        public Object get(Scope scope) {
+            Object val = scope.localStack[index];
+            return val instanceof Ref ref ? ref.value : val;
+        }
+
+        @Override
+        public void set(Scope scope, Object value) {
+            Object val = scope.localStack[index];
+            if (val instanceof Ref ref) {
+                ref.value = value;
+            } else {
+                scope.localStack[index] = value;
             }
-            if (extDef == null) {
-                createExtDef();
+        }
+
+        @Override
+        public void init(Scope scope, Object value) {
+            Object val = scope.localStack[index];
+            if (val instanceof Ref ref && ref.value == null) {
+                ref.value = value;
+            } else {
+                scope.localStack[index] = value;
             }
-            for (int i = 0; i < extDef.length; i++) {
-                int[] deep = extDef[i];
-                if (deep[0] >= functionScope.stack.length) {
-                    System.out.println("chyba s init scope ");
-                }
-                functionScope.stack[deep[0]] = initScope[i];
+        }
+    }
+
+    public static class ExtGetSet implements IGetSet {
+        private final int index;
+
+        public ExtGetSet(int index) {
+            this.index = index;
+        }
+
+        @Override
+        public Object get(Scope scope) {
+            return scope.extRefStack[index].value;
+        }
+
+        @Override
+        public void set(Scope scope, Object value) {
+            scope.extRefStack[index].value = value;
+        }
+    }
+
+    public static class MapGetSet implements IGetSet {
+        private final String name;
+
+        public MapGetSet(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public Object get(Scope scope) {
+            if (scope.rootScope.variables.containsKey(name)) {
+                return scope.rootScope.variables.get(name);
             }
+            throw new RuntimeException("Variable '" + name + "' not found");
+        }
+
+        @Override
+        public void set(Scope scope, Object value) {
+            scope.rootScope.variables.put(name, value);
         }
     }
 

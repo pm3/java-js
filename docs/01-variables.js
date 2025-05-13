@@ -1,22 +1,19 @@
 /**
  * JavaScript Variables Documentation
  * 
- * This file demonstrates the various ways to declare variables in JavaScript
- * and shows examples of different data types including hexadecimal numbers.
+ * This file demonstrates the ways to declare variables in JavaScript
+ * using let and const declarations, and shows examples of different data types.
  * 
  * All examples follow strict mode rules.
  */
 
 // ===== Variable Declarations =====
 
-// 1. var - function-scoped, can be redeclared and updated
-var oldVariable = "I am a var variable"; 
-
-// 2. let - block-scoped, can be updated but not redeclared in same scope
+// 1. let - block-scoped, can be updated but not redeclared in same scope
 let modernVariable = "I am a let variable";
 modernVariable = "I can be updated but not redeclared in same scope";
 
-// 3. const - block-scoped, cannot be updated or redeclared
+// 2. const - block-scoped, cannot be updated or redeclared
 const constantVariable = "I cannot be changed";
 // constantVariable = "This would throw an error"; // Invalid
 

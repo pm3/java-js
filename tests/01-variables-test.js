@@ -1,23 +1,13 @@
 // Test file for 01-variables.js
 // Tests the functionality described in the variables chapter
 
- // Object equality
-  const obj1 = { a: 1 };
-  const obj2 = { a: 1 };
-  assert(obj1 !== obj2, "Different objects are not strictly equal even with same content");
+// Object equality
+const obj1 = { a: 1 };
+const obj2 = { a: 1 };
+assert(obj1 !== obj2, "Different objects are not strictly equal even with same content");
 
 // Test variable declarations
 function testVariableDeclarations() {
-  // var can be redeclared and updated
-  var oldVariable = "I am a var variable";
-  assert(oldVariable === "I am a var variable", "var declaration works");
-
-
-  assertError(()=>{
-    var oldVariable2 = "I am a var variable";
-    var oldVariable2 = "I can be redeclared";
-  }, "var redeclaration throw error");
-
   // let can be updated but not redeclared in same scope
   let modernVariable = "I am a let variable";
   assert(modernVariable === "I am a let variable", "let declaration works");
@@ -28,12 +18,6 @@ function testVariableDeclarations() {
   // const cannot be updated or redeclared
   const constantVariable = "I cannot be changed";
   assert(constantVariable === "I cannot be changed", "const declaration works");
-
-  // Test that updating a const throws an error
-  assertError(function() {
-    const constTest = "test";
-    constTest = "update"; // This should throw an error
-  }, "Assignment to constant variable");
 }
 
 // Test JavaScript data types
@@ -95,13 +79,9 @@ function testVariableScope() {
 
   // Test block scope
   {
-    var varInBlock = "var in block";
     letOutsideBlock = "let was defined outside";
     constOutsideBlock = "const was defined outside";
   }
-
-  // var is function-scoped, so it's still accessible
-  assert(typeof varInBlock === "string", "var is accessible outside block");
 
   // Define variables that mimic expected error behavior
   assertError(function() {

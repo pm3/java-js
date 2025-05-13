@@ -7,7 +7,7 @@ function testClosureAccess() {
             let x = i;
             function inner() {
                 sum += x;  // closure access to `x`
-            }
+            };
             x+=3-y;
             inner();
         }

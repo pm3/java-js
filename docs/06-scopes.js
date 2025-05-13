@@ -42,8 +42,6 @@ function functionScopeExample() {
  * 3. Block Scope
  * 
  * let and const create variables with block scope.
- * var ignores block scope but is still function-scoped.
- * 
  * Block scope applies to code within curly braces {}, including:
  * - if/else blocks
  * - for/while loops
@@ -51,8 +49,8 @@ function functionScopeExample() {
  * - standalone blocks
  */
 {
-    // In strict mode, prefer let and const over var
-    let blockVar = "I am only visible in this block"; // Changed from var to let
+    // In strict mode, we use let and const for block-scoped variables
+    let blockVar = "I am only visible in this block";
     let blockLet = "I am only visible in this block";
     const blockConst = "I am also only visible in this block";
 }

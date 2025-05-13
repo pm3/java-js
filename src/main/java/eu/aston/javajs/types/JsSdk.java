@@ -166,7 +166,7 @@ public class JsSdk {
 
     public static <T> IJsFunctionExec parentTypeFunction(Class<T> type, ScopeFunction<T> fn) {
         return (scope, args) -> {
-            Object parent = scope.getValue(0, "this");
+            Object parent = scope.getStackValue(0, "this");
             if (parent != null && type.isAssignableFrom(parent.getClass())) {
                 return fn.apply(scope, args, (T) parent);
             }

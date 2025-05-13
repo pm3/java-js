@@ -140,13 +140,12 @@ function testThisOperator() {
   assert(obj.getValue() === 42, "'this' refers to object in method");
 
   // Test 'this' in arrow function
-  assertError(()=>{
       const obj2 = {
         value: 42,
         getValue: () => this.value
       };
       obj2.getValue();
-  });
+  assert(obj2.getValue() !== 42, "'this' in arrow function does not refer to object");
 
   // Test 'this' binding with call()
   function getValueFn() {

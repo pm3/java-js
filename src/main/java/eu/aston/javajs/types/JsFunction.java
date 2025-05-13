@@ -14,7 +14,7 @@ public class JsFunction implements IJsType {
     final Scope.ScopeDef scopeDef;
     final boolean inlineThis;
     final private Object parent;
-    final private Scope.Ref[] initScope;
+    final private Scope instanceScope;
 
     public JsFunction(String name, List<String> params, IJsFunctionExec exec, boolean inlineThis,
                       Scope.ScopeDef scopeDef) {
@@ -24,7 +24,7 @@ public class JsFunction implements IJsType {
         this.scopeDef = scopeDef;
         this.inlineThis = inlineThis;
         this.parent = null;
-        this.initScope = null;
+        this.instanceScope = null;
     }
 
     public JsFunction(JsFunction fn, Object parent) {
@@ -34,17 +34,17 @@ public class JsFunction implements IJsType {
         this.scopeDef = fn.scopeDef;
         this.inlineThis = fn.inlineThis;
         this.parent = parent;
-        this.initScope = fn.initScope;
+        this.instanceScope = fn.instanceScope;
     }
 
-    public JsFunction(JsFunction fn, Scope.Ref[] initScope) {
+    public JsFunction(JsFunction fn, Scope instanceScope) {
         this.name = fn.name;
         this.params = fn.params;
         this.exec = fn.exec;
         this.scopeDef = fn.scopeDef;
         this.inlineThis = fn.inlineThis;
         this.parent = fn.parent;
-        this.initScope = initScope;
+        this.instanceScope = instanceScope;
     }
 
     public String name() {
@@ -71,16 +71,15 @@ public class JsFunction implements IJsType {
 
     public Object exec(Scope scope, List<Object> args) {
         if (scopeDef != null) {
-            Scope functionScope = new Scope(scope, scopeDef.size());
+            Scope functionScope = instanceScope != null ? instanceScope : new Scope(scope, scopeDef.size(), null);
             functionScope.setStackValue(0, "this", parent != null ? parent : scope.rootThis());
             functionScope.setStackValue(1, "arguments", args);
             for (int i = 0; i < params.size(); i++) {
                 functionScope.setStackValue(i + 2, params.get(i), args.get(i));
             }
-            scopeDef.useInitScope(functionScope, initScope);
             return exec.exec(functionScope, args);
         } else {
-            Scope functionScope = new Scope(scope, 1);
+            Scope functionScope = new Scope(scope, 1, null);
             functionScope.setStackValue(0, "this", parent != null ? parent : scope.rootThis());
             return exec.exec(functionScope, args);
         }
