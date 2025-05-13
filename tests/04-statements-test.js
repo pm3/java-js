@@ -352,7 +352,7 @@ function testMultiLineStatements() {
 function testDestructuringStatements() {
   // Array destructuring
   const numbers = [1, 2, 3, 4, 5];
-  const first, second, rest;
+  let first, second, rest;
   [first, second, ...rest] = numbers;
   assert(first === 1, "Array destructuring assigns first element");
   assert(second === 2, "Array destructuring assigns second element");
@@ -367,7 +367,7 @@ function testDestructuringStatements() {
       country: 'USA'
     }
   };
-  const name, age, address;
+  let name, age, address;
   ({ name, age, address } = person);
   assert(name === 'John', "Object destructuring assigns property values");
   assert(age === 30, "Object destructuring assigns property values");

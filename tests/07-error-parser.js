@@ -161,3 +161,7 @@ let await = 10;
 /*parse-error*/
 // SyntaxError in strict mode
 eval('let y1 = 1; let y1 = 2;');
+
+/*parse-error*/
+// Missing initializer in const declaration
+const x;

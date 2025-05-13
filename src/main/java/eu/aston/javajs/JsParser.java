@@ -256,6 +256,10 @@ public class JsParser {
         ASTNode initializer = null;
         if (matchAdvance(TokenType.OPERATOR, "=")) {
             initializer = parseAssignmentExpression();
+        } else if (access.equals("const")) {
+            throw new SyntaxError(
+                    "Missing initializer in const declaration at line " + currentToken.getLine() + ", column " +
+                            currentToken.getColumn());
         }
 
         return variablesAnalyzer.var(
