@@ -476,6 +476,7 @@ public class JsParser {
             String access = currentToken.getValue();
             advance();
             init = parseVariableDeclaration(access);
+            expect(TokenType.PUNCTUATION, ";");
         } else if (match(TokenType.PUNCTUATION, ";")) {
             // Check for semicolon (empty initialization)
             // No initialization
@@ -483,9 +484,9 @@ public class JsParser {
         } else {
             // Otherwise it's an expression
             init = parseExpression();
+            expect(TokenType.PUNCTUATION, ";");
         }
 
-        expect(TokenType.PUNCTUATION, ";");
 
         // Parse condition (optional)
         if (!match(TokenType.PUNCTUATION, ";")) {

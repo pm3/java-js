@@ -335,9 +335,11 @@ public class AstNodes {
                 wrapOptionalNotFound(initialization, scope);
             }
             while (true) {
-                Object conditionValue = wrapOptionalNotFound(condition, scope);
-                if (!JsTypes.toBoolean(conditionValue)) {
-                    break;
+                if (condition != null) {
+                    Object conditionValue = wrapOptionalNotFound(condition, scope);
+                    if (!JsTypes.toBoolean(conditionValue)) {
+                        break;
+                    }
                 }
                 if (wrapBreakBlock(body, scope)) {
                     break;
