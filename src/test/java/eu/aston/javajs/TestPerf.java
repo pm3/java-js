@@ -20,18 +20,19 @@ public class TestPerf {
         long l2 = System.currentTimeMillis();
         System.out.println("parse time " + (l2 - l1));
         long avg = 0;
-        for (int i = 0; i < 40; i++) {
-            long t1 = System.currentTimeMillis();
+        int loops = 190;
+        for (int i = 0; i < loops; i++) {
+            long t1 = System.nanoTime();
             Scope rootScope = JsSdk.createRootScope();
             rootScope.nativeFunction("print()", (scope, args) -> {
                 System.out.println(args);
                 return null;
             });
             programNode.exec(rootScope);
-            long t2 = System.currentTimeMillis();
+            long t2 = System.nanoTime();
             //System.out.println("run time "+(t2-t1));
             avg += t2 - t1;
         }
-        System.out.println("avg run " + (avg / 40.0));
+        System.out.println("avg run " + (1.0 * avg / loops / 1_000_000));
     }
 }
