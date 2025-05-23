@@ -4,13 +4,14 @@ import java.util.List;
 
 import eu.aston.javajs.AstNodes.ASTNode;
 import eu.aston.javajs.AstNodes.ReturnException;
+import eu.aston.javajs.AstVisitor;
 import eu.aston.javajs.Scope;
 
 public class JsFunction implements IJsType {
 
     final String name;
     final List<String> params;
-    final IJsFunctionExec exec;
+    public final IJsFunctionExec exec;
     final Scope.ScopeDef scopeDef;
     final boolean inlineThis;
     final private Object parent;
@@ -69,7 +70,7 @@ public class JsFunction implements IJsType {
         return new JsFunction(this, scopeDef.createInitScope(scope));
     }
 
-    public Object exec(Scope scope, List<Object> args) {
+    public Scope createNewScope(Scope scope, List<Object> args) {
         if (scopeDef != null) {
             Scope functionScope = instanceScope != null ? instanceScope : new Scope(scope, scopeDef.size(), null);
             functionScope.setStackValue(0, "this", parent != null ? parent : scope.rootThis());
@@ -77,11 +78,11 @@ public class JsFunction implements IJsType {
             for (int i = 0; i < params.size(); i++) {
                 functionScope.setStackValue(i + 2, params.get(i), args.get(i));
             }
-            return exec.exec(functionScope, args);
+            return functionScope;
         } else {
             Scope functionScope = new Scope(scope, 1, null);
             functionScope.setStackValue(0, "this", parent != null ? parent : scope.rootThis());
-            return exec.exec(functionScope, args);
+            return functionScope;
         }
     }
 
@@ -108,9 +109,9 @@ public class JsFunction implements IJsType {
         }
 
         @Override
-        public Object exec(Scope scope, List<Object> args) {
+        public Object exec(AstVisitor visitor, List<Object> args) {
             try {
-                body.exec(scope);
+                body.accept(visitor);
             } catch (ReturnException e) {
                 return e.throwValue();
             }

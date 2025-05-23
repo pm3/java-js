@@ -361,8 +361,9 @@ public class JsParser {
 
         ASTNode thenStatement = parseStatement();
         if (thenStatement instanceof VariableDeclarationNode || thenStatement instanceof VariableStatementNode) {
-            throw new SyntaxError("Variable declaration not allowed directly in if statement at line " + 
-                currentToken.getLine() + ", column " + currentToken.getColumn());
+            throw new SyntaxError(
+                    "Variable declaration not allowed directly in if statement at line " + currentToken.getLine() +
+                            ", column " + currentToken.getColumn());
         }
 
         ASTNode elseStatement = null;
@@ -375,9 +376,10 @@ public class JsParser {
             } else {
                 // Regular else clause
                 elseStatement = parseStatement();
-                if (elseStatement instanceof VariableDeclarationNode || elseStatement instanceof VariableStatementNode) {
-                    throw new SyntaxError("Variable declaration not allowed directly in else statement at line " + 
-                        currentToken.getLine() + ", column " + currentToken.getColumn());
+                if (elseStatement instanceof VariableDeclarationNode ||
+                        elseStatement instanceof VariableStatementNode) {
+                    throw new SyntaxError("Variable declaration not allowed directly in else statement at line " +
+                                                  currentToken.getLine() + ", column " + currentToken.getColumn());
                 }
             }
         }

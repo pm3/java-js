@@ -43,7 +43,7 @@ public class TestScripts {
             System.out.println(args);
             return null;
         });
-        runScript(rootScope, script);
+        runScript(new BaseAstVisitor(rootScope), script);
     }
 
     private void testErrorParser(String script, List<DynamicTest> tests) {
@@ -62,11 +62,11 @@ public class TestScripts {
         }
     }
 
-    private void runScript(Scope rootScope, String script) {
+    private void runScript(AstVisitor visitor, String script) {
         JsLexer lexer = new JsLexer(script + script2);
         JsParser parser = new JsParser(lexer.tokenize());
         AstNodes.ASTNode root = parser.parse();
-        root.exec(rootScope);
+        root.accept(visitor);
     }
 
     public static Object assertNative(List<DynamicTest> tests, List<Object> args) {

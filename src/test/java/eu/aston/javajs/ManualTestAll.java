@@ -58,9 +58,8 @@ public class ManualTestAll {
                     JsLexer lexer = new JsLexer(script + script2);
                     JsParser parser = new JsParser(lexer.tokenize());
                     ASTNode root = parser.parse();
-
-                    //JsParser.printTree(root, " ");
-                    root.exec(rootScope);
+                    AstVisitor visitor = new BaseAstVisitor(rootScope);
+                    root.accept(visitor);
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -124,7 +123,7 @@ public class ManualTestAll {
 
         for (int i = 0; i < 10; i++) {
             Scope rootScope = JsSdk.createRootScope();
-            programNode.exec(rootScope);
+            programNode.accept(new BaseAstVisitor(rootScope));
         }
     }
 

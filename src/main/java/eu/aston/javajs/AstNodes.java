@@ -1,9 +1,7 @@
 package eu.aston.javajs;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -19,37 +17,25 @@ public class AstNodes {
 
     // Abstract Syntax Tree node classes
     public static abstract class ASTNode {
-        public Object exec(Scope scope) {
-            return Undefined.INSTANCE;
-        }
+        /**
+         * Accept method for the visitor pattern
+         *
+         * @param visitor the visitor to accept
+         * @return the result of the visitor's visit method
+         */
+        public abstract Object accept(AstVisitor visitor);
     }
 
     public interface ExecuteWithReturn {
     }
 
-    public interface GetSetReturn {
-        GetSet createGetSet(Scope scope);
-    }
-
-    public static Object wrapOptionalNotFound(ASTNode node, Scope scope) {
+    public static Object wrapOptionalNotFound(ASTNode node, AstVisitor visitor) {
         try {
-            return node.exec(scope);
+            return node.accept(visitor);
         } catch (OptionalNotFoundException ignore) {
             return Undefined.INSTANCE;
         }
     }
-
-    public static boolean wrapBreakBlock(ASTNode node, Scope scope) {
-        try {
-            node.exec(scope);
-        } catch (BreakBlockException e) {
-            return !e.nextLoop();
-        } catch (OptionalNotFoundException ignore) {
-            return false;
-        }
-        return false;
-    }
-
     // block nodes
 
     public static class ProgramNode extends BlockNode {
@@ -62,9 +48,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Scope newScope = new Scope(scope, scopeDef.size(), null);
-            return blockNode.exec(newScope);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitProgramNode(this);
         }
     }
 
@@ -82,18 +67,16 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            for (FunctionDeclarationNode functionNode : functions) {
-                functionNode.scopeGetSet.set(scope, functionNode.function.initScope(scope));
-            }
-            for (ASTNode statement : statements) {
-                wrapOptionalNotFound(statement, scope);
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitBlockNode(this);
         }
     }
 
     public static class EmptyStatementNode extends ASTNode {
+        @Override
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitEmptyStatementNode(this);
+        }
     }
 
     // variable nodes
@@ -106,11 +89,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            for (VariableDeclarationNode declaration : declarations) {
-                declaration.exec(scope);
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitVariableStatementNode(this);
         }
     }
 
@@ -135,15 +115,13 @@ public class AstNodes {
             this.tokenPos = tokenPos;
         }
 
-        @Override
-        public Object exec(Scope scope) {
-            Object value = initializer != null ? wrapOptionalNotFound(initializer, scope) : Undefined.INSTANCE;
-            scopeGetSet.init(scope, value);
-            return value;
-        }
-
         public void setValue(Scope scope, Object value) {
             scopeGetSet.set(scope, value);
+        }
+
+        @Override
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitVariableDeclarationNode(this);
         }
     }
 
@@ -160,32 +138,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object rightValue = wrapOptionalNotFound(right, scope);
-            if (rightValue instanceof List<?> l) {
-                for (int i = 0; i < variables.size(); i++) {
-                    VariableDeclarationNode v = variables.get(i);
-                    if (v != null) {
-                        Object value = i < l.size() ? l.get(i) : Undefined.INSTANCE;
-                        v.setValue(scope, value);
-                    }
-                }
-                if (restVariable != null) {
-                    Object value =
-                            variables.size() < l.size() ? l.subList(variables.size(), l.size()) : Undefined.INSTANCE;
-                    restVariable.setValue(scope, value);
-                }
-            } else {
-                for (VariableDeclarationNode v : variables) {
-                    if (v != null) {
-                        v.setValue(scope, Undefined.INSTANCE);
-                    }
-                }
-                if (restVariable != null) {
-                    restVariable.setValue(scope, Undefined.INSTANCE);
-                }
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitDestructuringArrayNode(this);
         }
     }
 
@@ -193,7 +147,7 @@ public class AstNodes {
         public final List<VariableDeclarationNode> variables;
         public final VariableDeclarationNode restVariable;
         public final ASTNode right;
-        private final List<String> names;
+        public final List<String> names;
 
         public DestructuringObjectNode(List<VariableDeclarationNode> variables, VariableDeclarationNode restVariable,
                                        ASTNode right) {
@@ -203,34 +157,9 @@ public class AstNodes {
             this.names = variables.stream().map(v -> v.identifier).toList();
         }
 
-        @SuppressWarnings("unchecked")
         @Override
-        public Object exec(Scope scope) {
-            Object rightValue = wrapOptionalNotFound(right, scope);
-            if (rightValue instanceof Map) {
-                Map<String, Object> map = (Map<String, Object>) rightValue;
-                for (VariableDeclarationNode v : variables) {
-                    Object value = map.getOrDefault(v.identifier, Undefined.INSTANCE);
-                    v.setValue(scope, value);
-                }
-                if (restVariable != null) {
-                    Map<String, Object> restMap = new HashMap<>();
-                    for (Map.Entry<String, Object> e : map.entrySet()) {
-                        if (!names.contains(e.getKey())) {
-                            restMap.put(e.getKey(), e.getValue());
-                        }
-                    }
-                    restVariable.setValue(scope, restMap);
-                }
-            } else {
-                for (VariableDeclarationNode v : variables) {
-                    v.setValue(scope, Undefined.INSTANCE);
-                }
-                if (restVariable != null) {
-                    restVariable.setValue(scope, Undefined.INSTANCE);
-                }
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitDestructuringObjectNode(this);
         }
     }
 
@@ -248,14 +177,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object conditionValue = wrapOptionalNotFound(condition, scope);
-            if (JsTypes.toBoolean(conditionValue)) {
-                return wrapOptionalNotFound(thenStatement, scope);
-            } else if (elseStatement != null) {
-                return wrapOptionalNotFound(elseStatement, scope);
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitIfStatementNode(this);
         }
     }
 
@@ -269,21 +192,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            int step = 0;
-            while (true) {
-                Object conditionValue = wrapOptionalNotFound(condition, scope);
-                if (!JsTypes.toBoolean(conditionValue)) {
-                    break;
-                }
-                if (wrapBreakBlock(body, scope)) {
-                    break;
-                }
-                if (step++ > INFINITE_LOOP_LIMIT) {
-                    throw new RuntimeException("Infinite loop detected - while statement");
-                }
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitWhileStatementNode(this);
         }
     }
 
@@ -297,21 +207,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            int step = 0;
-            while (true) {
-                if (wrapBreakBlock(body, scope)) {
-                    break;
-                }
-                Object conditionValue = wrapOptionalNotFound(condition, scope);
-                if (!JsTypes.toBoolean(conditionValue)) {
-                    break;
-                }
-                if (step++ > INFINITE_LOOP_LIMIT) {
-                    throw new RuntimeException("Infinite loop detected - while statement");
-                }
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitDoWhileStatementNode(this);
         }
     }
 
@@ -329,29 +226,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            int step = 0;
-            if (initialization != null) {
-                wrapOptionalNotFound(initialization, scope);
-            }
-            while (true) {
-                if (condition != null) {
-                    Object conditionValue = wrapOptionalNotFound(condition, scope);
-                    if (!JsTypes.toBoolean(conditionValue)) {
-                        break;
-                    }
-                }
-                if (wrapBreakBlock(body, scope)) {
-                    break;
-                }
-                if (update != null) {
-                    wrapOptionalNotFound(update, scope);
-                }
-                if (step++ > INFINITE_LOOP_LIMIT) {
-                    throw new RuntimeException("Infinite loop detected - for statement");
-                }
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitForStatementNode(this);
         }
     }
 
@@ -367,32 +243,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object value = wrapOptionalNotFound(expression, scope);
-            if (value instanceof Map map) {
-                int step = 0;
-                for (Object key : map.keySet()) {
-                    variableName.setValue(scope, key);
-                    if (wrapBreakBlock(body, scope)) {
-                        break;
-                    }
-                    if (step++ > INFINITE_LOOP_LIMIT) {
-                        throw new RuntimeException("Infinite loop detected - for statement");
-                    }
-                }
-            } else if (value instanceof List list) {
-                int step = 0;
-                for (int i = 0; i < list.size(); i++) {
-                    variableName.setValue(scope, i);
-                    if (wrapBreakBlock(body, scope)) {
-                        break;
-                    }
-                    if (step++ > INFINITE_LOOP_LIMIT) {
-                        throw new RuntimeException("Infinite loop detected - for statement");
-                    }
-                }
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitForInStatementNode(this);
         }
     }
 
@@ -408,35 +260,22 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object value = wrapOptionalNotFound(expression, scope);
-            if (value instanceof List list) {
-                int step = 0;
-                for (Object o : list) {
-                    variableName.setValue(scope, o);
-                    if (wrapBreakBlock(body, scope)) {
-                        break;
-                    }
-                    if (step++ > INFINITE_LOOP_LIMIT) {
-                        throw new RuntimeException("Infinite loop detected - for statement");
-                    }
-                }
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitForOfStatementNode(this);
         }
     }
 
     public static class ContinueStatementNode extends ASTNode {
         @Override
-        public Object exec(Scope scope) {
-            throw new BreakBlockException(true);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitContinueStatementNode(this);
         }
     }
 
     public static class BreakStatementNode extends ASTNode {
         @Override
-        public Object exec(Scope scope) {
-            throw new BreakBlockException(false);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitBreakStatementNode(this);
         }
     }
 
@@ -448,9 +287,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object val = wrapOptionalNotFound(expression, scope);
-            throw new ReturnException(val);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitReturnStatementNode(this);
         }
     }
 
@@ -472,22 +310,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object discriminantValue = wrapOptionalNotFound(discriminant, scope);
-            boolean switched = false;
-            for (SwitchCaseNode caseNode : cases) {
-                Object caseValue = caseNode.test.exec(scope);
-                if (switched || JsOps.strictEqual(discriminantValue, caseValue)) {
-                    switched = true;
-                    if (wrapBreakBlock(caseNode, scope)) {
-                        return null;
-                    }
-                }
-            }
-            if (defaultCase != null) {
-                wrapBreakBlock(defaultCase, scope);
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitSwitchStatementNode(this);
         }
     }
 
@@ -501,11 +325,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            for (ASTNode statement : consequent) {
-                statement.exec(scope);
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitSwitchCaseNode(this);
         }
     }
 
@@ -517,11 +338,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            for (ASTNode statement : consequent) {
-                statement.exec(scope);
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitSwitchDefaultNode(this);
         }
     }
 
@@ -535,9 +353,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object value = expression.exec(scope);
-            throw new ExecuteScriptException("throw", value, tokenPos);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitThrowStatementNode(this);
         }
     }
 
@@ -553,25 +370,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            try {
-                block.exec(scope);
-            } catch (BreakBlockException e) {
-                throw e;
-            } catch (ExecuteScriptException e) {
-                Object throwValue = e.throwValue() != null ? e.throwValue() : e.getMessage();
-                if (catchClause != null) {
-                    if (catchClause.param != null) {
-                        catchClause.param.setValue(scope, throwValue);
-                    }
-                    catchClause.exec(scope);
-                }
-            } finally {
-                if (finallyBlock != null) {
-                    finallyBlock.exec(scope);
-                }
-            }
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitTryStatementNode(this);
         }
     }
 
@@ -585,9 +385,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            body.exec(scope);
-            return null;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitCatchClauseNode(this);
         }
     }
 
@@ -596,7 +395,7 @@ public class AstNodes {
     public static class BinaryExpressionNode extends ASTNode implements ExecuteWithReturn {
         public final ASTNode left;
         public final String operator;
-        public final Function<Scope, Object> operatorFunction;
+        public final Function<AstVisitor, Object> operatorFunction;
         public final ASTNode right;
 
         public BinaryExpressionNode(ASTNode left, String operator, ASTNode right) {
@@ -604,45 +403,45 @@ public class AstNodes {
             this.operator = operator;
             this.right = right;
             if (operator.equals("||")) {
-                this.operatorFunction = (scope) -> {
-                    Object leftValue = wrapOptionalNotFound(left, scope);
+                this.operatorFunction = (visitor) -> {
+                    Object leftValue = wrapOptionalNotFound(left, visitor);
                     if (JsTypes.toBoolean(leftValue)) {
                         return leftValue;
                     }
-                    return wrapOptionalNotFound(right, scope);
+                    return wrapOptionalNotFound(right, visitor);
                 };
             } else if (operator.equals("&&")) {
-                this.operatorFunction = (scope) -> {
-                    Object leftValue = wrapOptionalNotFound(left, scope);
+                this.operatorFunction = (visitor) -> {
+                    Object leftValue = wrapOptionalNotFound(left, visitor);
                     if (!JsTypes.toBoolean(leftValue)) {
                         return leftValue;
                     }
-                    return wrapOptionalNotFound(right, scope);
+                    return wrapOptionalNotFound(right, visitor);
                 };
             } else if (operator.equals("??")) {
-                this.operatorFunction = (scope) -> {
-                    Object leftValue = wrapOptionalNotFound(left, scope);
+                this.operatorFunction = (visitor) -> {
+                    Object leftValue = wrapOptionalNotFound(left, visitor);
                     if (leftValue != null && leftValue != Undefined.INSTANCE) {
                         return leftValue;
                     }
-                    return wrapOptionalNotFound(right, scope);
+                    return wrapOptionalNotFound(right, visitor);
                 };
             } else {
                 BiFunction<Object, Object, Object> operand = JsOps.operation(operator);
                 if (operand == null) {
                     throw new JsParser.SyntaxError("Invalid operator " + operator);
                 }
-                this.operatorFunction = (scope) -> {
-                    Object leftValue = wrapOptionalNotFound(left, scope);
-                    Object rightValue = wrapOptionalNotFound(right, scope);
+                this.operatorFunction = (visitor) -> {
+                    Object leftValue = wrapOptionalNotFound(left, visitor);
+                    Object rightValue = wrapOptionalNotFound(right, visitor);
                     return operand.apply(leftValue, rightValue);
                 };
             }
         }
 
         @Override
-        public Object exec(Scope scope) {
-            return operatorFunction.apply(scope);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitBinaryExpressionNode(this);
         }
     }
 
@@ -654,13 +453,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            StringBuilder sb = new StringBuilder();
-            for (ASTNode item : items) {
-                Object value = item.exec(scope);
-                sb.append(JsTypes.toString(value));
-            }
-            return sb.toString();
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitStringConcatExpressionNode(this);
         }
     }
 
@@ -695,18 +489,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            try {
-                GetSet leftGetSet = ((GetSetReturn) left).createGetSet(scope);
-                Object rightValue = right.exec(scope);
-                return assignmentFunction.apply(leftGetSet, rightValue);
-            } catch (OptionalNotFoundException ignore) {
-                return Undefined.INSTANCE;
-            } catch (ExecuteScriptException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new ExecuteScriptException("Error in assignment " + e.getMessage(), null);
-            }
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitAssignmentExpressionNode(this);
         }
     }
 
@@ -722,20 +506,15 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object conditionValue = wrapOptionalNotFound(condition, scope);
-            if (JsTypes.toBoolean(conditionValue)) {
-                return wrapOptionalNotFound(trueExpression, scope);
-            } else {
-                return wrapOptionalNotFound(falseExpression, scope);
-            }
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitConditionalExpressionNode(this);
         }
     }
 
     public static class UnaryExpressionNode extends ASTNode implements ExecuteWithReturn {
         public final String operator;
         public final ASTNode operand;
-        public final Function<Scope, Object> unaryFunction;
+        public final Function<AstVisitor, Object> unaryFunction;
 
         public UnaryExpressionNode(String operator, ASTNode operand) {
             this.operator = operator;
@@ -749,25 +528,25 @@ public class AstNodes {
             } else if (operator.equals("--var")) {
                 this.unaryFunction = createIncrementFn(operand, -1, false);
             } else {
-                Function<Object, Object> unaryFunction = switch (operator) {
+                Function<Object, Object> unaryFunction2 = switch (operator) {
                     case "+" -> JsTypes::toNumber;
                     case "-" -> JsTypes::unaryMinus;
                     case "!" -> (v) -> !JsTypes.toBoolean(v);
                     case "typeof" -> JsTypes::typeof;
                     default -> throw new JsParser.SyntaxError("Invalid operator " + operator);
                 };
-                this.unaryFunction = (scope) -> {
-                    Object value = wrapOptionalNotFound(operand, scope);
-                    return unaryFunction.apply(value);
+                this.unaryFunction = (visitor) -> {
+                    Object value = wrapOptionalNotFound(operand, visitor);
+                    return unaryFunction2.apply(value);
                 };
             }
         }
 
-        private Function<Scope, Object> createIncrementFn(ASTNode operand, int inc, boolean returnLeft) {
+        private Function<AstVisitor, Object> createIncrementFn(ASTNode operand, int inc, boolean returnLeft) {
             BiFunction<Object, Object, Object> plus = JsOps.numberPlus();
-            return (scope) -> {
+            return (visitor) -> {
                 try {
-                    GetSet getSet = ((GetSetReturn) operand).createGetSet(scope);
+                    GetSet getSet = visitor.createGetSet(operand);
                     Number right = JsTypes.toNumber(getSet.value());
                     Object resp = plus.apply(right, inc);
                     getSet.setter().accept(resp);
@@ -779,12 +558,12 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            return unaryFunction.apply(scope);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitUnaryExpressionNode(this);
         }
     }
 
-    public static class IdentifierNode extends ASTNode implements ExecuteWithReturn, GetSetReturn {
+    public static class IdentifierNode extends ASTNode implements ExecuteWithReturn {
         public final String name;
         public final TokenPos tokenPos;
         public Scope.IGetSet scopeGetSet;
@@ -796,25 +575,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            return get(scope);
-        }
-
-        @Override
-        public GetSet createGetSet(Scope scope) {
-            return new GetSet(get(scope), val -> set(scope, val));
-        }
-
-        public Object get(Scope scope) {
-            try {
-                return scopeGetSet.get(scope);
-            } catch (RuntimeException e) {
-                throw new ExecuteScriptException(e.getMessage(), tokenPos);
-            }
-        }
-
-        public void set(Scope scope, Object value) {
-            scopeGetSet.set(scope, value);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitIdentifierNode(this);
         }
     }
 
@@ -826,8 +588,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            return value;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitConstantNode(this);
         }
     }
 
@@ -839,12 +601,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            List<Object> array = new ArrayList<>();
-            for (ASTNode element : elements) {
-                array.add(wrapOptionalNotFound(element, scope));
-            }
-            return array;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitArrayLiteralNode(this);
         }
     }
 
@@ -856,16 +614,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Map<String, Object> object = new java.util.HashMap<>();
-            for (PropertyNode property : properties) {
-                Object value = wrapOptionalNotFound(property.value, scope);
-                if (value instanceof JsFunction functionValue) {
-                    value = functionValue.setParent(object);
-                }
-                object.put(property.key, value);
-            }
-            return object;
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitObjectLiteralNode(this);
         }
     }
 
@@ -877,6 +627,11 @@ public class AstNodes {
             this.key = key;
             this.value = value;
         }
+
+        @Override
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitPropertyNode(this);
+        }
     }
 
     public static class OptionalNode extends ASTNode implements ExecuteWithReturn {
@@ -887,20 +642,12 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            try {
-                Object val = object.exec(scope);
-                if (val == null || val == Undefined.INSTANCE) {
-                    throw new OptionalNotFoundException("undefined optional");
-                }
-                return val;
-            } catch (NotFoundException e) {
-                throw new OptionalNotFoundException(e.getMessage());
-            }
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitOptionalNode(this);
         }
     }
 
-    public static class MemberExpressionNode extends ASTNode implements ExecuteWithReturn, GetSetReturn {
+    public static class MemberExpressionNode extends ASTNode implements ExecuteWithReturn {
         public final ASTNode object;
         public final String staticProperty;
         public final ASTNode dynamicProperty;
@@ -921,16 +668,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            return createGetSet(scope).value();
-        }
-
-        @Override
-        public GetSet createGetSet(Scope scope) {
-            Object parent = object.exec(scope);
-            Object property = staticProperty != null ? staticProperty
-                                                     : dynamicProperty != null ? dynamicProperty.exec(scope) : null;
-            return GetSet.createGetSet(parent, property, scope, tokenPos);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitMemberExpressionNode(this);
         }
     }
 
@@ -950,8 +689,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            return function.initScope(scope);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitFunctionDeclarationNode(this);
         }
     }
 
@@ -967,21 +706,8 @@ public class AstNodes {
         }
 
         @Override
-        public Object exec(Scope scope) {
-            Object functionRaw = callee.exec(scope);
-            if (!(functionRaw instanceof JsFunction function)) {
-                throw new AstNodes.ExecuteScriptException(JsTypes.typeof(functionRaw) + " is not function", tokenPos);
-            }
-            // Prepare arguments
-            List<Object> args = new ArrayList<>();
-            for (int i = 0; i < Math.max(arguments.size(), function.params().size()); i++) {
-                Object argValue = Undefined.INSTANCE;
-                if (i < arguments.size()) {
-                    argValue = wrapOptionalNotFound(arguments.get(i), scope);
-                }
-                args.add(argValue);
-            }
-            return function.exec(scope, args);
+        public Object accept(AstVisitor visitor) {
+            return visitor.visitCallExpressionNode(this);
         }
     }
 

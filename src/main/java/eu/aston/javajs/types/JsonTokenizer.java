@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import eu.aston.javajs.AstNodes;
-import eu.aston.javajs.Scope;
 
 public class JsonTokenizer {
 
@@ -245,7 +244,7 @@ public class JsonTokenizer {
         }
     }
 
-    public static String stringify(Scope scope, Object value) {
+    public static String stringify(Object value) {
         if (value == null || value == Undefined.INSTANCE) {
             return "null";
         }

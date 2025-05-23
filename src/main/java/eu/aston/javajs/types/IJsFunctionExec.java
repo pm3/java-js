@@ -2,9 +2,9 @@ package eu.aston.javajs.types;
 
 import java.util.List;
 
-import eu.aston.javajs.Scope;
+import eu.aston.javajs.AstVisitor;
 
 @FunctionalInterface
 public interface IJsFunctionExec {
-    Object exec(Scope scope, List<Object> args);
+    Object exec(AstVisitor visitor, List<Object> args);
 }

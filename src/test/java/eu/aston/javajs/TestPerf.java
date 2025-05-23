@@ -23,12 +23,12 @@ public class TestPerf {
         int loops = 190;
         for (int i = 0; i < loops; i++) {
             long t1 = System.nanoTime();
-            Scope rootScope = JsSdk.createRootScope();
-            rootScope.nativeFunction("print()", (scope, args) -> {
+            AstVisitor visitor = JsSdk.createVisitor();
+            visitor.getCurrentScope().nativeFunction("print()", (scope, args) -> {
                 System.out.println(args);
                 return null;
             });
-            programNode.exec(rootScope);
+            programNode.accept(visitor);
             long t2 = System.nanoTime();
             //System.out.println("run time "+(t2-t1));
             avg += t2 - t1;

@@ -12,6 +12,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import eu.aston.javajs.AstVisitor;
+import eu.aston.javajs.BaseAstVisitor;
 import eu.aston.javajs.Scope;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
@@ -23,6 +25,9 @@ public class JsSdk {
         return scope;
     }
 
+    public static AstVisitor createVisitor() {
+        return new BaseAstVisitor(createRootScope());
+    }
 
     public static void defineFunctions(Scope scope) {
         // String prototype methods
@@ -136,7 +141,7 @@ public class JsSdk {
     }
 
     // parseInt function
-    public static Number parseInt(Scope scope, List<Object> args) {
+    public static Number parseInt(AstVisitor visitor, List<Object> args) {
         if (args.getFirst() != null && args.get(1) != null) {
             try {
                 int radix = Integer.parseInt(args.get(1).toString());
@@ -150,25 +155,26 @@ public class JsSdk {
     }
 
     // parseFloat function
-    public static Number parseFloat(Scope scope, List<Object> args) {
+    public static Number parseFloat(AstVisitor visitor, List<Object> args) {
         return JsTypes.toNumber(args.getFirst());
     }
 
     // isNaN function
-    public static Boolean isNaN(Scope scope, List<Object> args) {
+    public static Boolean isNaN(AstVisitor visitor, List<Object> args) {
         return args.getFirst() instanceof Double d && Double.isNaN(d);
     }
 
     @FunctionalInterface
     public interface ScopeFunction<T> {
-        Object apply(Scope scope, List<Object> args, T parent);
+        Object apply(AstVisitor visitor, List<Object> args, T parent);
     }
 
     public static <T> IJsFunctionExec parentTypeFunction(Class<T> type, ScopeFunction<T> fn) {
-        return (scope, args) -> {
+        return (visitor, args) -> {
+            Scope scope = visitor.getCurrentScope();
             Object parent = scope.getStackValue(0, "this");
             if (parent != null && type.isAssignableFrom(parent.getClass())) {
-                return fn.apply(scope, args, (T) parent);
+                return fn.apply(visitor, args, (T) parent);
             }
             return null;
         };
@@ -176,7 +182,7 @@ public class JsSdk {
 
     //string functions
     //String.prototype.charAt()
-    public static String string_charAt(Scope scope, List<Object> args, String parent) {
+    public static String string_charAt(AstVisitor visitor, List<Object> args, String parent) {
         int index = JsTypes.toNumber(args.getFirst()).intValue();
         if (index >= 0 && index < parent.length()) {
             return String.valueOf(parent.charAt(index));
@@ -185,7 +191,7 @@ public class JsSdk {
     }
 
     //String.prototype.charCodeAt()
-    public static Integer string_charCodeAt(Scope scope, List<Object> args, String parent) {
+    public static Integer string_charCodeAt(AstVisitor visitor, List<Object> args, String parent) {
         int index = JsTypes.toNumber(args.getFirst()).intValue();
         if (index >= 0 && index < parent.length()) {
             return (int) parent.charAt(index);
@@ -194,7 +200,7 @@ public class JsSdk {
     }
 
     //String.prototype.concat()
-    public static String string_concat(Scope scope, List<Object> args, String parent) {
+    public static String string_concat(AstVisitor visitor, List<Object> args, String parent) {
         StringBuilder sb = new StringBuilder(parent);
         for (Object arg : args) {
             sb.append(JsTypes.toString(arg));
@@ -203,7 +209,7 @@ public class JsSdk {
     }
 
     //String.prototype.endsWith()
-    public static Boolean string_endsWith(Scope scope, List<Object> args, String parent) {
+    public static Boolean string_endsWith(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return false;
         }
@@ -218,7 +224,7 @@ public class JsSdk {
     }
 
     //String.prototype.includes()
-    public static Boolean string_includes(Scope scope, List<Object> args, String parent) {
+    public static Boolean string_includes(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return false;
         }
@@ -236,7 +242,7 @@ public class JsSdk {
     }
 
     //String.prototype.indexOf()
-    public static Integer string_indexOf(Scope scope, List<Object> args, String parent) {
+    public static Integer string_indexOf(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return -1;
         }
@@ -254,7 +260,7 @@ public class JsSdk {
     }
 
     //String.prototype.lastIndexOf()
-    public static Integer string_lastIndexOf(Scope scope, List<Object> args, String parent) {
+    public static Integer string_lastIndexOf(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return -1;
         }
@@ -272,7 +278,7 @@ public class JsSdk {
     }
 
     //String.prototype.match()
-    public static List<String> string_match(Scope scope, List<Object> args, String parent) {
+    public static List<String> string_match(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return List.of();
         }
@@ -296,7 +302,7 @@ public class JsSdk {
     }
 
     //String.prototype.matchAll()
-    public static List<List<String>> string_matchAll(Scope scope, List<Object> args, String parent) {
+    public static List<List<String>> string_matchAll(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return List.of();
         }
@@ -322,7 +328,7 @@ public class JsSdk {
     }
 
     //String.prototype.padEnd()
-    public static String string_padEnd(Scope scope, List<Object> args, String parent) {
+    public static String string_padEnd(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return parent;
         }
@@ -347,7 +353,7 @@ public class JsSdk {
     }
 
     //String.prototype.padStart()
-    public static String string_padStart(Scope scope, List<Object> args, String parent) {
+    public static String string_padStart(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return parent;
         }
@@ -372,7 +378,7 @@ public class JsSdk {
     }
 
     //String.prototype.repeat()
-    public static String string_repeat(Scope scope, List<Object> args, String parent) {
+    public static String string_repeat(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return "";
         }
@@ -389,7 +395,7 @@ public class JsSdk {
     }
 
     //String.prototype.replace()
-    public static String string_replace(Scope scope, List<Object> args, String parent) {
+    public static String string_replace(AstVisitor visitor, List<Object> args, String parent) {
         if (args.size() < 2) {
             return parent;
         }
@@ -415,7 +421,7 @@ public class JsSdk {
     }
 
     //String.prototype.replaceAll()
-    public static String string_replaceAll(Scope scope, List<Object> args, String parent) {
+    public static String string_replaceAll(AstVisitor visitor, List<Object> args, String parent) {
         if (args.size() < 2) {
             return parent;
         }
@@ -433,7 +439,7 @@ public class JsSdk {
     }
 
     //String.prototype.search()
-    public static Integer string_search(Scope scope, List<Object> args, String parent) {
+    public static Integer string_search(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return -1;
         }
@@ -452,7 +458,7 @@ public class JsSdk {
     }
 
     //String.prototype.slice()
-    public static String string_slice(Scope scope, List<Object> args, String parent) {
+    public static String string_slice(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return parent;
         }
@@ -480,7 +486,7 @@ public class JsSdk {
     }
 
     //String.prototype.split()
-    public static List<String> string_split(Scope scope, List<Object> args, String parent) {
+    public static List<String> string_split(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return List.of(parent);
         }
@@ -507,7 +513,7 @@ public class JsSdk {
     }
 
     //String.prototype.startsWith()
-    public static Boolean string_startsWith(Scope scope, List<Object> args, String parent) {
+    public static Boolean string_startsWith(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return false;
         }
@@ -525,7 +531,7 @@ public class JsSdk {
     }
 
     //String.prototype.substring()
-    public static String string_substring(Scope scope, List<Object> args, String parent) {
+    public static String string_substring(AstVisitor visitor, List<Object> args, String parent) {
         if (args.isEmpty()) {
             return parent;
         }
@@ -556,42 +562,42 @@ public class JsSdk {
     }
 
     //String.prototype.toLocaleLowerCase()
-    public static String string_toLocaleLowerCase(Scope scope, List<Object> args, String parent) {
+    public static String string_toLocaleLowerCase(AstVisitor visitor, List<Object> args, String parent) {
         return parent.toLowerCase();
     }
 
     //String.prototype.toLocaleUpperCase()
-    public static String string_toLocaleUpperCase(Scope scope, List<Object> args, String parent) {
+    public static String string_toLocaleUpperCase(AstVisitor visitor, List<Object> args, String parent) {
         return parent.toUpperCase();
     }
 
     //String.prototype.toLowerCase()
-    public static String string_toLowerCase(Scope scope, List<Object> args, String parent) {
+    public static String string_toLowerCase(AstVisitor visitor, List<Object> args, String parent) {
         return parent.toLowerCase();
     }
 
     //String.prototype.toUpperCase()
-    public static String string_toUpperCase(Scope scope, List<Object> args, String parent) {
+    public static String string_toUpperCase(AstVisitor visitor, List<Object> args, String parent) {
         return parent.toUpperCase();
     }
 
     //String.prototype.trim()
-    public static String string_trim(Scope scope, List<Object> args, String parent) {
+    public static String string_trim(AstVisitor visitor, List<Object> args, String parent) {
         return parent.trim();
     }
 
     //String.prototype.trimEnd()
-    public static String string_trimEnd(Scope scope, List<Object> args, String parent) {
+    public static String string_trimEnd(AstVisitor visitor, List<Object> args, String parent) {
         return parent.stripTrailing();
     }
 
     //String.prototype.trimStart()
-    public static String string_trimStart(Scope scope, List<Object> args, String parent) {
+    public static String string_trimStart(AstVisitor visitor, List<Object> args, String parent) {
         return parent.stripLeading();
     }
 
     //String.prototype.at()
-    public static String string_at(Scope scope, List<Object> args, String parent) {
+    public static String string_at(AstVisitor visitor, List<Object> args, String parent) {
         int index = JsTypes.toNumber(args.getFirst()).intValue();
         if (index < 0) {
             index = parent.length() + index;
@@ -604,13 +610,13 @@ public class JsSdk {
 
     //Array methods
 
-    public static boolean array_isArray(Scope scope, List<Object> args) {
+    public static boolean array_isArray(AstVisitor visitor, List<Object> args) {
         return args.getFirst() instanceof List;
     }
 
 
     //Array.prototype.concat()
-    public static List<Object> array_concat(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_concat(AstVisitor visitor, List<Object> args, List<Object> parent) {
         List<Object> result = new ArrayList<>(parent);
 
         for (Object arg : args) {
@@ -625,7 +631,7 @@ public class JsSdk {
     }
 
     //Array.prototype.copyWithin()
-    public static List<Object> array_copyWithin(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_copyWithin(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return parent;
         }
@@ -665,7 +671,7 @@ public class JsSdk {
     }
 
     //Array.prototype.every()
-    public static Boolean array_every(Scope scope, List<Object> args, List<Object> parent) {
+    public static Boolean array_every(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty() || parent.isEmpty()) {
             return true;
         }
@@ -676,7 +682,7 @@ public class JsSdk {
 
         for (int i = 0; i < parent.size(); i++) {
             Object value = parent.get(i);
-            Object result = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object result = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
             if (!JsTypes.toBoolean(result)) {
                 return false;
             }
@@ -686,7 +692,7 @@ public class JsSdk {
     }
 
     //Array.prototype.fill()
-    public static List<Object> array_fill(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_fill(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return parent;
         }
@@ -716,7 +722,7 @@ public class JsSdk {
     }
 
     //Array.prototype.filter()
-    public static List<Object> array_filter(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_filter(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return new ArrayList<>();
         }
@@ -729,7 +735,7 @@ public class JsSdk {
 
         for (int i = 0; i < parent.size(); i++) {
             Object value = parent.get(i);
-            Object filterResult = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object filterResult = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
 
             if (JsTypes.toBoolean(filterResult)) {
                 result.add(value);
@@ -740,7 +746,7 @@ public class JsSdk {
     }
 
     //Array.prototype.find()
-    public static Object array_find(Scope scope, List<Object> args, List<Object> parent) {
+    public static Object array_find(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return null;
         }
@@ -751,7 +757,7 @@ public class JsSdk {
 
         for (int i = 0; i < parent.size(); i++) {
             Object value = parent.get(i);
-            Object result = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object result = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
 
             if (JsTypes.toBoolean(result)) {
                 return value;
@@ -762,7 +768,7 @@ public class JsSdk {
     }
 
     //Array.prototype.findIndex()
-    public static Integer array_findIndex(Scope scope, List<Object> args, List<Object> parent) {
+    public static Integer array_findIndex(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return -1;
         }
@@ -773,7 +779,7 @@ public class JsSdk {
 
         for (int i = 0; i < parent.size(); i++) {
             Object value = parent.get(i);
-            Object result = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object result = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
 
             if (JsTypes.toBoolean(result)) {
                 return i;
@@ -784,7 +790,7 @@ public class JsSdk {
     }
 
     //Array.prototype.findLast()
-    public static Object array_findLast(Scope scope, List<Object> args, List<Object> parent) {
+    public static Object array_findLast(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return null;
         }
@@ -795,7 +801,7 @@ public class JsSdk {
 
         for (int i = parent.size() - 1; i >= 0; i--) {
             Object value = parent.get(i);
-            Object result = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object result = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
 
             if (JsTypes.toBoolean(result)) {
                 return value;
@@ -806,7 +812,7 @@ public class JsSdk {
     }
 
     //Array.prototype.findLastIndex()
-    public static Integer array_findLastIndex(Scope scope, List<Object> args, List<Object> parent) {
+    public static Integer array_findLastIndex(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return -1;
         }
@@ -817,7 +823,7 @@ public class JsSdk {
 
         for (int i = parent.size() - 1; i >= 0; i--) {
             Object value = parent.get(i);
-            Object result = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object result = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
 
             if (JsTypes.toBoolean(result)) {
                 return i;
@@ -828,7 +834,7 @@ public class JsSdk {
     }
 
     //Array.prototype.flat()
-    public static List<Object> array_flat(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_flat(AstVisitor visitor, List<Object> args, List<Object> parent) {
         List<Object> newArray = new ArrayList<>();
         int depth = args.isEmpty() ? 1 : JsTypes.toNumber(args.getFirst()).intValue();
         flattenArray(newArray, parent, depth);
@@ -846,7 +852,7 @@ public class JsSdk {
     }
 
     //Array.prototype.flatMap()
-    public static List<Object> array_flatMap(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_flatMap(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return new ArrayList<>(parent);
         }
@@ -859,7 +865,7 @@ public class JsSdk {
 
         for (int i = 0; i < parent.size(); i++) {
             Object value = parent.get(i);
-            Object mappedValue = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object mappedValue = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
 
             if (mappedValue instanceof List) {
                 result.addAll((List<Object>) mappedValue);
@@ -872,18 +878,18 @@ public class JsSdk {
     }
 
     //Array.prototype.forEach()
-    public static Object array_forEach(Scope scope, List<Object> args, List<Object> parent) {
+    public static Object array_forEach(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (!args.isEmpty() && args.getFirst() instanceof JsFunction callbackFn) {
             for (int i = 0; i < parent.size(); i++) {
                 Object value = parent.get(i);
-                callbackFn.exec(scope, Arrays.asList(value, i, parent));
+                visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
             }
         }
         return null;
     }
 
     //Array.prototype.includes()
-    public static Boolean array_includes(Scope scope, List<Object> args, List<Object> parent) {
+    public static Boolean array_includes(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return false;
         }
@@ -908,7 +914,7 @@ public class JsSdk {
     }
 
     //Array.prototype.indexOf()
-    public static Integer array_indexOf(Scope scope, List<Object> args, List<Object> parent) {
+    public static Integer array_indexOf(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return -1;
         }
@@ -933,14 +939,14 @@ public class JsSdk {
     }
 
     //Array.prototype.join()
-    public static String array_join(Scope scope, List<Object> args, List<Object> parent) {
+    public static String array_join(AstVisitor visitor, List<Object> args, List<Object> parent) {
         String separator = args.isEmpty() ? "," : JsTypes.toString(args.getFirst());
 
         return parent.stream().map(JsTypes::toString).collect(Collectors.joining(separator));
     }
 
     //Array.prototype.lastIndexOf()
-    public static Integer array_lastIndexOf(Scope scope, List<Object> args, List<Object> parent) {
+    public static Integer array_lastIndexOf(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty() || parent.isEmpty()) {
             return -1;
         }
@@ -968,7 +974,7 @@ public class JsSdk {
     }
 
     //Array.prototype.map()
-    public static List<Object> array_map(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_map(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return new ArrayList<>();
         }
@@ -981,7 +987,7 @@ public class JsSdk {
 
         for (int i = 0; i < parent.size(); i++) {
             Object value = parent.get(i);
-            Object mappedValue = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object mappedValue = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
             result.add(mappedValue);
         }
 
@@ -989,18 +995,18 @@ public class JsSdk {
     }
 
     //Array.prototype.pop()
-    public static Object array_pop(Scope scope, List<Object> args, List<Object> parent) {
+    public static Object array_pop(AstVisitor visitor, List<Object> args, List<Object> parent) {
         return parent.isEmpty() ? null : parent.removeLast();
     }
 
     //Array.prototype.push()
-    public static Integer array_push(Scope scope, List<Object> args, List<Object> parent) {
+    public static Integer array_push(AstVisitor visitor, List<Object> args, List<Object> parent) {
         parent.addAll(args);
         return parent.size();
     }
 
     //Array.prototype.reduce()
-    public static Object array_reduce(Scope scope, List<Object> args, List<Object> parent) {
+    public static Object array_reduce(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return null;
         }
@@ -1018,14 +1024,14 @@ public class JsSdk {
 
         for (int i = startIndex; i < parent.size(); i++) {
             Object currentValue = parent.get(i);
-            accumulator = callbackFn.exec(scope, Arrays.asList(accumulator, currentValue, i, parent));
+            accumulator = visitor.executeFunction(callbackFn, Arrays.asList(accumulator, currentValue, i, parent));
         }
 
         return accumulator;
     }
 
     //Array.prototype.reduceRight()
-    public static Object array_reduceRight(Scope scope, List<Object> args, List<Object> parent) {
+    public static Object array_reduceRight(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return null;
         }
@@ -1043,25 +1049,25 @@ public class JsSdk {
 
         for (int i = startIndex; i >= 0; i--) {
             Object currentValue = parent.get(i);
-            accumulator = callbackFn.exec(scope, Arrays.asList(accumulator, currentValue, i, parent));
+            accumulator = visitor.executeFunction(callbackFn, Arrays.asList(accumulator, currentValue, i, parent));
         }
 
         return accumulator;
     }
 
     //Array.prototype.reverse()
-    public static List<Object> array_reverse(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_reverse(AstVisitor visitor, List<Object> args, List<Object> parent) {
         Collections.reverse(parent);
         return parent;
     }
 
     //Array.prototype.shift()
-    public static Object array_shift(Scope scope, List<Object> args, List<Object> parent) {
+    public static Object array_shift(AstVisitor visitor, List<Object> args, List<Object> parent) {
         return parent.isEmpty() ? null : parent.removeFirst();
     }
 
     //Array.prototype.slice()
-    public static List<Object> array_slice(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_slice(AstVisitor visitor, List<Object> args, List<Object> parent) {
         int start = args.isEmpty() ? 0 : JsTypes.toNumber(args.getFirst()).intValue();
         int end = args.size() > 1 ? JsTypes.toNumber(args.get(1)).intValue() : parent.size();
 
@@ -1083,7 +1089,7 @@ public class JsSdk {
     }
 
     //Array.prototype.some()
-    public static Boolean array_some(Scope scope, List<Object> args, List<Object> parent) {
+    public static Boolean array_some(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return false;
         }
@@ -1097,7 +1103,7 @@ public class JsSdk {
 
         for (int i = 0; i < parent.size(); i++) {
             Object value = parent.get(i);
-            Object result = callbackFn.exec(scope, Arrays.asList(value, i, parent));
+            Object result = visitor.executeFunction(callbackFn, Arrays.asList(value, i, parent));
 
             if (JsTypes.toBoolean(result)) {
                 return true;
@@ -1108,7 +1114,7 @@ public class JsSdk {
     }
 
     //Array.prototype.sort()
-    public static List<Object> array_sort(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_sort(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (parent.size() <= 1) {
             return parent;
         }
@@ -1119,7 +1125,7 @@ public class JsSdk {
         } else if (args.getFirst() instanceof JsFunction callbackFn) {
             // Custom comparator function
             parent.sort((a, b) -> {
-                Object result = callbackFn.exec(scope, Arrays.asList(a, b));
+                Object result = visitor.executeFunction(callbackFn, Arrays.asList(a, b));
                 return JsTypes.toNumber(result).intValue();
             });
         }
@@ -1128,7 +1134,7 @@ public class JsSdk {
     }
 
     //Array.prototype.splice()
-    public static List<Object> array_splice(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_splice(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.isEmpty()) {
             return new ArrayList<>();
         }
@@ -1160,7 +1166,7 @@ public class JsSdk {
     }
 
     //Array.prototype.unshift()
-    public static Integer array_unshift(Scope scope, List<Object> args, List<Object> parent) {
+    public static Integer array_unshift(AstVisitor visitor, List<Object> args, List<Object> parent) {
         for (int i = args.size() - 1; i >= 0; i--) {
             parent.addFirst(args.get(i));
         }
@@ -1168,7 +1174,7 @@ public class JsSdk {
     }
 
     //Array.prototype.with()
-    public static List<Object> array_with(Scope scope, List<Object> args, List<Object> parent) {
+    public static List<Object> array_with(AstVisitor visitor, List<Object> args, List<Object> parent) {
         if (args.size() < 2) {
             return new ArrayList<>(parent);
         }
@@ -1192,12 +1198,12 @@ public class JsSdk {
     }
 
     //Object.isExtensible()
-    public static boolean object_isExtensible(Scope scope, List<Object> args) {
+    public static boolean object_isExtensible(AstVisitor visitor, List<Object> args) {
         return false;
     }
 
     //Object.assign()
-    public static Object object_assign(Scope scope, List<Object> args) {
+    public static Object object_assign(AstVisitor visitor, List<Object> args) {
         if (args.isEmpty()) {
             return null;
         }
@@ -1221,7 +1227,7 @@ public class JsSdk {
     }
 
     //Object.entries()
-    public static List<List<Object>> object_entries(Scope scope, List<Object> args) {
+    public static List<List<Object>> object_entries(AstVisitor visitor, List<Object> args) {
         if (args.isEmpty() || !(args.getFirst() instanceof Map)) {
             return List.of();
         }
@@ -1237,7 +1243,7 @@ public class JsSdk {
     }
 
     //Object.getOwnPropertyNames()
-    public static List<String> object_getOwnPropertyNames(Scope scope, List<Object> args) {
+    public static List<String> object_getOwnPropertyNames(AstVisitor visitor, List<Object> args) {
         if (args.isEmpty() || !(args.getFirst() instanceof Map)) {
             return List.of();
         }
@@ -1247,7 +1253,7 @@ public class JsSdk {
     }
 
     //Object.groupBy()
-    public static Map<String, List<Object>> object_groupBy(Scope scope, List<Object> args) {
+    public static Map<String, List<Object>> object_groupBy(AstVisitor visitor, List<Object> args) {
         if (args.size() < 2 || !(args.getFirst() instanceof List) || !(args.get(1) instanceof JsFunction callbackFn)) {
             return Map.of();
         }
@@ -1257,7 +1263,7 @@ public class JsSdk {
 
         for (int i = 0; i < items.size(); i++) {
             Object item = items.get(i);
-            Object key = callbackFn.exec(scope, Arrays.asList(item, i, items));
+            Object key = visitor.executeFunction(callbackFn, Arrays.asList(item, i, items));
             String keyString = JsTypes.toString(key);
 
             if (!result.containsKey(keyString)) {
@@ -1271,7 +1277,7 @@ public class JsSdk {
     }
 
     //Object.hasOwn()
-    public static boolean object_hasOwn(Scope scope, List<Object> args) {
+    public static boolean object_hasOwn(AstVisitor visitor, List<Object> args) {
         if (args.size() < 2 || !(args.getFirst() instanceof Map map)) {
             return false;
         }
@@ -1279,7 +1285,7 @@ public class JsSdk {
     }
 
     //Object.keys()
-    public static List<String> object_keys(Scope scope, List<Object> args) {
+    public static List<String> object_keys(AstVisitor visitor, List<Object> args) {
         if (args.isEmpty() || !(args.getFirst() instanceof Map)) {
             return List.of();
         }
@@ -1289,7 +1295,7 @@ public class JsSdk {
     }
 
     //Object.values()
-    public static List<Object> object_values(Scope scope, List<Object> args) {
+    public static List<Object> object_values(AstVisitor visitor, List<Object> args) {
         if (args.isEmpty() || !(args.getFirst() instanceof Map)) {
             return List.of();
         }
@@ -1299,28 +1305,28 @@ public class JsSdk {
     }
 
     // Function.prototype.apply()
-    public static Object function_apply(Scope scope, List<Object> args, JsFunction fn) {
+    public static Object function_apply(AstVisitor visitor, List<Object> args, JsFunction fn) {
         Object thisArg = args.getFirst();
         List<Object> fnArgs =
                 args.size() > 1 && args.get(1) instanceof List ? (List<Object>) args.get(1) : new ArrayList<>();
         while (fnArgs.size() < fn.params.size()) {
             fnArgs.add(Undefined.INSTANCE);
         }
-        return fn.setParent(thisArg).exec(scope, fnArgs);
+        return visitor.executeFunction(fn.setParent(thisArg), fnArgs);
     }
 
     // Function.prototype.call()
-    public static Object function_call(Scope scope, List<Object> args, JsFunction fn) {
+    public static Object function_call(AstVisitor visitor, List<Object> args, JsFunction fn) {
         Object thisArg = args.isEmpty() ? null : args.getFirst();
         List<Object> fnArgs = args.size() > 1 ? args.subList(1, args.size()) : new ArrayList<>();
         while (fnArgs.size() < fn.params.size()) {
             fnArgs.add(Undefined.INSTANCE);
         }
-        return fn.setParent(thisArg).exec(scope, fnArgs);
+        return visitor.executeFunction(fn.setParent(thisArg), fnArgs);
     }
 
     // Json.parse()
-    public static Object json_parse(Scope scope, List<Object> args) {
+    public static Object json_parse(AstVisitor visitor, List<Object> args) {
         if (args.getFirst() instanceof String str) {
             return JsonTokenizer.parse(str);
         }
@@ -1328,8 +1334,8 @@ public class JsSdk {
     }
 
     // Json.stringify()
-    public static String json_stringify(Scope scope, List<Object> args) {
-        return JsonTokenizer.stringify(scope, args.getFirst());
+    public static String json_stringify(AstVisitor visitor, List<Object> args) {
+        return JsonTokenizer.stringify(args.getFirst());
     }
 
 }
